@@ -7,9 +7,23 @@ import Footer from './components/Footer';
 export type AppStep = 'intro' | 'processing' | 'result';
 
 const App: React.FC = () => {
-  const [step, setStep] = useState<AppStep>('intro');
-  const [originalImage, setOriginalImage] = useState<string | null>(null);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  // Initialize state from sessionStorage if available to handle return from payment gateway
+  const [step, setStep] = useState<AppStep>(() => 
+    (sessionStorage.getItem('mir_step') as AppStep) || 'intro'
+  );
+  const [originalImage, setOriginalImage] = useState<string | null>(() => 
+    sessionStorage.getItem('mir_original')
+  );
+  const [generatedImage, setGeneratedImage] = useState<string | null>(() => 
+    sessionStorage.getItem('mir_generated')
+  );
+
+  // Persist state changes to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('mir_step', step);
+    if (originalImage) sessionStorage.setItem('mir_original', originalImage);
+    if (generatedImage) sessionStorage.setItem('mir_generated', generatedImage);
+  }, [step, originalImage, generatedImage]);
 
   // Scroll to top whenever step changes to fix navigation position
   useEffect(() => {
@@ -21,6 +35,11 @@ const App: React.FC = () => {
   };
 
   const handleReset = () => {
+    // Clear session storage on reset
+    sessionStorage.removeItem('mir_step');
+    sessionStorage.removeItem('mir_original');
+    sessionStorage.removeItem('mir_generated');
+    
     setStep('intro');
     setOriginalImage(null);
     setGeneratedImage(null);

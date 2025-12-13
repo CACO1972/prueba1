@@ -4,7 +4,17 @@ import Button from './Button';
 import Spinner from './Spinner';
 import ContactForm from './ContactForm';
 import BeforeAfterSlider from './BeforeAfterSlider';
+import ReportView from './ReportView';
 import { AppStep } from '../App';
+
+// --- CONFIGURACIÓN DE PAGO FLOW ---
+// INSTRUCCIONES:
+// 1. Ingresa a tu portal de Flow (flow.cl) con tu API Key/Secret si es necesario para entrar, o usa tus credenciales de acceso.
+// 2. Ve a "Cobros" -> "Botones de Pago".
+// 3. Crea un botón por el valor de $5.900.
+// 4. Copia el enlace que te genera Flow y pégalo abajo reemplazando el texto entre comillas.
+const FLOW_PAYMENT_URL = "https://www.flow.cl/btn.php?token=TU_TOKEN_AQUI"; 
+// ----------------------------------
 
 interface ImageProcessorProps {
   step: AppStep;
@@ -27,105 +37,6 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
       u8arr[n] = bstr.charCodeAt(n);
   }
   return new File([u8arr], filename, {type:mime});
-};
-
-// Watermark Helper Function
-const addWatermark = async (imageUrl: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-          resolve(imageUrl);
-          return;
-      }
-
-      // Draw original image
-      ctx.drawImage(img, 0, 0);
-
-      // Dimensions
-      const w = canvas.width;
-      const h = canvas.height;
-
-      // Gradient Overlay at bottom
-      const gradientHeight = h * 0.25;
-      const gradient = ctx.createLinearGradient(0, h - gradientHeight, 0, h);
-      gradient.addColorStop(0, "transparent");
-      gradient.addColorStop(1, "rgba(0,0,0,0.95)");
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, h - gradientHeight, w, gradientHeight);
-
-      // Logo Calculation
-      const logoSize = Math.min(w * 0.18, 220); 
-      const padding = w * 0.05;
-      
-      // Draw Text
-      const fontSizeTitle = logoSize * 0.35; // MIRŌ
-      const fontSizeSub = logoSize * 0.14; // CLINICA
-      const fontSizeTagline = logoSize * 0.12; // DISEÑO IA
-      
-      ctx.textAlign = "right";
-      
-      // "CLINICA" (Small top text)
-      ctx.font = `500 ${fontSizeSub}px "Jost", sans-serif`;
-      ctx.fillStyle = "#e2e8f0";
-      // Manually implementing letter spacing for canvas since ctx.letterSpacing is experimental in some browsers
-      // Simplified: Just drawing it normally as standard fonts render ok
-      ctx.fillText("CLINICA", w - logoSize - padding - (w * 0.01), h - padding - (logoSize * 0.45));
-
-      // "MIRŌ" (Main text)
-      ctx.font = `bold ${fontSizeTitle}px "Jost", sans-serif`;
-      ctx.fillStyle = "white";
-      ctx.shadowColor = "rgba(0,0,0,0.5)";
-      ctx.shadowBlur = 10;
-      ctx.fillText("MIRŌ", w - logoSize - padding - (w * 0.01), h - padding - (logoSize * 0.12));
-
-      // "DISEÑO DE SONRISA IA" (Tagline)
-      ctx.font = `${fontSizeTagline}px "Jost", sans-serif`;
-      ctx.fillStyle = "#fbbf24"; // Amber-400
-      ctx.shadowBlur = 0;
-      ctx.fillText("DISEÑO DE SONRISA IA", w - logoSize - padding - (w * 0.01), h - padding);
-
-      // Constructing the New Logo SVG Data URI for Canvas
-      // We reconstruct the hexagon paths here
-      const logoSvgString = `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${logoSize}" height="${logoSize}">
-            <defs>
-              <filter id="shadow">
-                <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="black" flood-opacity="0.5"/>
-              </filter>
-            </defs>
-            <g fill="white" filter="url(#shadow)">
-               ${[0, 60, 120, 180, 240, 300].map(angle => `
-                 <g transform="rotate(${angle} 50 50)">
-                   <path d="M50 18 L70 18 L62 32 L50 32 Z" opacity="0.9"/>
-                   <path d="M72 18 L88 46 L80 46 L68 25 Z" opacity="1"/>
-                 </g>
-               `).join('')}
-            </g>
-            <g fill="#fbbf24">
-               ${[0, 60, 120, 180, 240, 300].map(angle => `
-                 <circle cx="50" cy="50" r="2" transform="rotate(${angle} 50 50) translate(0, -36)" opacity="0.8"/>
-               `).join('')}
-            </g>
-        </svg>
-      `;
-      
-      const logoImg = new Image();
-      logoImg.onload = () => {
-          // Draw logo icon
-          ctx.drawImage(logoImg, w - logoSize - padding, h - logoSize - padding, logoSize, logoSize);
-          resolve(canvas.toDataURL('image/jpeg', 0.95));
-      };
-      logoImg.src = "data:image/svg+xml;base64," + btoa(logoSvgString);
-    };
-    img.onerror = () => resolve(imageUrl);
-    img.src = imageUrl;
-  });
 };
 
 const PhotoTips: React.FC = () => (
@@ -166,11 +77,23 @@ const ImageProcessor: React.FC<ImageProcessorProps> = ({
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [leadCaptured, setLeadCaptured] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [hasPaid, setHasPaid] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize Gemini
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+  // Check for payment return status
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    // Flow usually returns a 'token' or we can check for a custom status parameter
+    if (searchParams.has('token') || searchParams.get('status') === 'paid' || searchParams.get('payment') === 'success') {
+        setHasPaid(true);
+        // Optional: Clean URL
+        window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -256,7 +179,8 @@ const ImageProcessor: React.FC<ImageProcessorProps> = ({
 
   const handleDownloadClick = () => {
       if (leadCaptured) {
-          executeDownload();
+          // If paid, we don't really use this function anymore as logic moved to ReportView,
+          // but kept for fallback or non-paid partial flow
       } else {
           setShowLeadModal(true);
       }
@@ -265,23 +189,6 @@ const ImageProcessor: React.FC<ImageProcessorProps> = ({
   const handleLeadSubmit = () => {
       setLeadCaptured(true);
       setShowLeadModal(false);
-      executeDownload();
-  };
-
-  const executeDownload = async () => {
-      if (!generatedImage) return;
-      
-      try {
-        const watermarked = await addWatermark(generatedImage);
-        const link = document.createElement('a');
-        link.href = watermarked;
-        link.download = `clinica-miro-simulacion-${Date.now()}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } catch (e) {
-          console.error("Download failed", e);
-      }
   };
 
   // 1. ANALYSIS MODE
@@ -340,7 +247,18 @@ const ImageProcessor: React.FC<ImageProcessorProps> = ({
       );
   }
 
-  // 3. RESULT MODE
+  // 3. PREMIUM REPORT VIEW (IF PAID)
+  if (hasPaid && originalImage && generatedImage) {
+      return (
+        <ReportView 
+            originalImage={originalImage} 
+            generatedImage={generatedImage} 
+            onReset={onReset} 
+        />
+      );
+  }
+
+  // 4. FREE RESULT MODE (BEFORE PAYMENT)
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto animate-fade-in pb-20">
       
@@ -350,7 +268,7 @@ const ImageProcessor: React.FC<ImageProcessorProps> = ({
           <h2 className="text-3xl md:text-4xl font-light text-slate-800">Tu Sonrisa <span className="font-semibold text-slate-900">Rediseñada</span></h2>
       </div>
 
-      {/* BEFORE / AFTER SLIDER - NO GATE */}
+      {/* BEFORE / AFTER SLIDER */}
       {originalImage && generatedImage && (
           <div className="w-full mb-10">
              <BeforeAfterSlider before={originalImage} after={generatedImage} />
@@ -371,42 +289,102 @@ const ImageProcessor: React.FC<ImageProcessorProps> = ({
               PROBAR OTRA FOTO
           </Button>
           
-          <Button onClick={handleDownloadClick} className="w-full py-4 text-sm font-bold shadow-xl">
-              DESCARGAR DISEÑO
+          <Button 
+            onClick={() => window.open(FLOW_PAYMENT_URL, '_blank')} 
+            className="w-full py-4 text-sm font-bold shadow-xl animate-pulse flex items-center justify-center gap-2"
+          >
+            IR AL PAGO (FLOW)
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
           </Button>
       </div>
 
-      {/* SCHEDULING SECTION */}
-      <div className="mt-8 w-full max-w-2xl px-4">
-         <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
-             <h3 className="text-lg font-bold text-slate-800 mb-2">¿Te gusta tu nueva sonrisa?</h3>
-             <p className="text-slate-600 mb-6 text-sm">Agenda tu evaluación diagnóstica y hazlo realidad.</p>
-             
-             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                 <button 
-                    onClick={() => window.open('https://ff.healthatom.io/41knMr', '_blank')}
-                    className="flex-1 bg-amber-500 text-white px-4 py-3 rounded-lg font-bold hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 text-sm uppercase tracking-wide"
-                 >
-                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                     </svg>
-                     Agendar Online
-                 </button>
+      {/* TRIPWIRE OFFER SECTION */}
+      <div className="mt-12 w-full max-w-2xl px-4 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+          <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-amber-500/50 rounded-2xl p-1 overflow-hidden shadow-2xl">
+              
+              {/* Gold Shimmer Effect */}
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent opacity-75"></div>
 
-                 <button 
-                    onClick={() => window.open('https://wa.me/56935572986?text=Hola,%20me%20gustaría%20agendar%20una%20evaluación%20de%20diseño%20de%20sonrisa', '_blank')}
-                    className="flex-1 bg-[#25D366] text-white px-4 py-3 rounded-lg font-bold hover:bg-[#20bd5a] transition-colors shadow-lg shadow-green-500/20 flex items-center justify-center gap-2 text-sm uppercase tracking-wide"
-                 >
-                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                     </svg>
-                     WhatsApp
-                 </button>
-             </div>
-         </div>
+              <div className="bg-slate-900/90 rounded-xl p-6 md:p-8 text-center relative z-10">
+                  <div className="inline-block bg-gradient-to-r from-amber-400 to-amber-600 text-slate-900 text-[11px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest mb-6 shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse">
+                      Oferta Flash Limitada
+                  </div>
+
+                  <h2 className="text-3xl md:text-4xl font-light text-white mb-8 leading-tight">
+                      ¡Tu sonrisa perfecta está a un paso!
+                  </h2>
+
+                  <div className="text-left bg-white/5 rounded-xl p-6 md:p-8 mb-8 border border-white/10">
+                      {/* NEW BIGGER TITLE */}
+                      <h3 className="text-amber-400 font-bold text-2xl md:text-3xl mb-6 text-center md:text-left leading-tight">
+                          Informe Análisis Dentofacial
+                          <span className="block text-white text-lg md:text-xl font-light mt-1">clinicamiro.cl</span>
+                      </h3>
+
+                      {/* NEW BIGGER LIST */}
+                      <ul className="space-y-4 text-slate-300 text-base md:text-lg">
+                          <li className="flex items-start gap-3">
+                              <span className="text-amber-500 mt-1 min-w-[20px]">✓</span> 
+                              <span>Análisis facial + dental detallado con IA y revisión clínica</span>
+                          </li>
+                          <li className="flex items-start gap-3">
+                              <span className="text-amber-500 mt-1 min-w-[20px]">✓</span> 
+                              <span>Presupuesto estimado personalizado</span>
+                          </li>
+                          <li className="flex items-start gap-3">
+                              <span className="text-amber-500 mt-1 min-w-[20px]">✓</span> 
+                              <span>Video 3D de tu simulación + PDF descargable</span>
+                          </li>
+                          <li className="flex items-start gap-3">
+                              <span className="text-amber-500 mt-1 min-w-[20px]">✓</span> 
+                              <span><span className="text-white font-bold">Cupón 10% descuento</span> válido solo 48h</span>
+                          </li>
+                      </ul>
+                  </div>
+
+                  <div className="flex flex-col items-center justify-center gap-2 mb-8">
+                      <div className="text-slate-400 text-base md:text-lg line-through decoration-slate-500 mb-1">
+                          Valor consulta privada $80.000
+                      </div>
+                      <div className="text-5xl md:text-6xl font-black text-white drop-shadow-md">
+                          $5.900 <span className="text-xl font-bold text-amber-500">CLP</span>
+                      </div>
+                  </div>
+
+                  {/* PREMIUM BUTTON - FLOW INTEGRATION */}
+                  <a 
+                      href={FLOW_PAYMENT_URL}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="block w-full bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 text-slate-900 font-black text-xl md:text-2xl py-6 rounded-xl shadow-[0_0_40px_rgba(245,158,11,0.6)] hover:shadow-[0_0_60px_rgba(245,158,11,0.8)] transition-all transform hover:-translate-y-1 hover:scale-[1.02] uppercase tracking-wider relative overflow-hidden group border-2 border-white/20"
+                  >
+                      <span className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-3">
+                        <span className="hidden md:inline">👉</span> 
+                        <span>Sí, quiero mi informe + Cupón 10%</span>
+                      </span>
+                      {/* Shine effect */}
+                      <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-40 group-hover:animate-shine" />
+                  </a>
+                  
+                  {/* TRUST BADGES TO REDUCE FRICTION */}
+                  <div className="mt-6 flex flex-col items-center gap-3">
+                      <p className="text-[11px] md:text-xs text-slate-400 uppercase tracking-widest font-medium flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          Garantía de Satisfacción Clínica Miró
+                      </p>
+                      <p className="text-[10px] text-slate-500">
+                          🔒 Pago procesado seguramente por Flow
+                      </p>
+                  </div>
+              </div>
+          </div>
       </div>
 
-      {/* LEAD MODAL */}
+      {/* LEAD MODAL (Used for unpaid fallback data capture if needed) */}
       {showLeadModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm transition-opacity" onClick={() => setShowLeadModal(false)}></div>
