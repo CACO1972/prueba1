@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import ImageProcessor from './components/ImageProcessor';
+import AestheticSimulator from './components/AestheticSimulator';
 import Footer from './components/Footer';
 
-export type AppStep = 'intro' | 'processing' | 'result';
+export type AppStep = 'intro' | 'processing' | 'result' | 'aesthetic';
 
 const App: React.FC = () => {
   // Initialize state from sessionStorage if available to handle return from payment gateway
@@ -34,6 +35,10 @@ const App: React.FC = () => {
     setStep('processing');
   };
 
+  const handleStartAesthetic = () => {
+    setStep('aesthetic');
+  };
+
   const handleReset = () => {
     // Clear session storage on reset
     sessionStorage.removeItem('mir_step');
@@ -58,14 +63,23 @@ const App: React.FC = () => {
       {/* Added pt-24 (mobile) and pt-32 (desktop) to prevent Header from overlapping content */}
       <main className="relative z-10 px-4 sm:px-6 lg:px-8 flex-grow flex flex-col pt-24 md:pt-32">
         {step === 'intro' && <Hero onStart={handleStart} />}
+        
         {(step === 'processing' || step === 'result') && (
           <ImageProcessor
             step={step}
             originalImage={originalImage}
             generatedImage={generatedImage}
             onSimulationComplete={handleSimulationComplete}
+            onStartAesthetic={handleStartAesthetic}
             onReset={handleReset}
           />
+        )}
+
+        {step === 'aesthetic' && originalImage && (
+            <AestheticSimulator 
+                imageSrc={originalImage} 
+                onBack={() => setStep('result')}
+            />
         )}
       </main>
       <Footer />
