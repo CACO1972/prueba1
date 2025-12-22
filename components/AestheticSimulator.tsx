@@ -20,27 +20,58 @@ declare global {
   }
 }
 
+const JawlineMetrics = [
+  { label: "Ángulo Mandibular", value: "125°", status: "Ideal", desc: "Proyección óptima del ángulo goniaco." },
+  { label: "Definición de Mentón", value: "Subóptima", status: "Mejorable", desc: "Necesidad de proyección anterior (Rellenos)." },
+  { label: "Tensión de Maseteros", value: "Alta", status: "Tratamiento", desc: "Sugerencia: Aplicación de Toxina Botulínica." },
+  { label: "Vectores de Soporte", value: "65%", status: "Preventivo", desc: "Bioestimulación recomendada para prevenir flacidez." }
+];
+
+const JawlineTreatments = [
+  { name: "Marcaje Mandibular", tech: "Hialurónico Alta Densidad", goal: "Definir contorno" },
+  { name: "Radiesse / Sculptra", tech: "Bioestimuladores", goal: "Soporte estructural" },
+  { name: "Botox Maseteros", tech: "Relajación Muscular", goal: "Afinamiento facial" }
+];
+
 const AestheticSimulator: React.FC<AestheticSimulatorProps> = ({ imageSrc, onBack }) => {
-  const [loading, setLoading] = useState(false); // Starts false, waits for credentials
+  const [loading, setLoading] = useState(false); 
   const [sdkError, setSdkError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<{clientId: string, clientSecret: string} | null>(null);
+  const [showAnalysis, setShowAnalysis] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Form State
   const [clientIdInput, setClientIdInput] = useState('');
   const [clientSecretInput, setClientSecretInput] = useState('');
 
+  useEffect(() => {
+      const storedClientId = localStorage.getItem('mir_pc_client_id');
+      const storedClientSecret = localStorage.getItem('mir_pc_client_secret');
+
+      if (storedClientId && storedClientSecret) {
+          setCredentials({ clientId: storedClientId, clientSecret: storedClientSecret });
+          setLoading(true); 
+      }
+  }, []);
+
   const handleCredentialsSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       if (clientIdInput && clientSecretInput) {
+          localStorage.setItem('mir_pc_client_id', clientIdInput);
+          localStorage.setItem('mir_pc_client_secret', clientSecretInput);
           setCredentials({ clientId: clientIdInput, clientSecret: clientSecretInput });
-          setLoading(true); // Start loading SDK
+          setLoading(true);
       }
   };
 
-  // 1. Script Loader & SDK Initialization
+  const handleLogout = () => {
+      localStorage.removeItem('mir_pc_client_id');
+      localStorage.removeItem('mir_pc_client_secret');
+      setCredentials(null);
+      window.location.reload();
+  };
+
   useEffect(() => {
-    // Only proceed if credentials are provided
     if (!credentials) return;
 
     let script: HTMLScriptElement | null = null;
@@ -48,14 +79,13 @@ const AestheticSimulator: React.FC<AestheticSimulatorProps> = ({ imageSrc, onBac
     const initPerfectCorpSDK = async () => {
       try {
         if (!window.YMK) {
-          // Create and append the Perfect Corp SDK script
           script = document.createElement('script');
           script.src = "https://yce-web-sdk.perfectcorp.com/sdk/v1/ycsdk.js"; 
           script.async = true;
           
           await new Promise((resolve, reject) => {
             script!.onload = resolve;
-            script!.onerror = () => reject(new Error("No se pudo cargar el SDK de Perfect Corp. Verifique su conexión o la URL."));
+            script!.onerror = () => reject(new Error("Error de conexión con el servidor de análisis biométrico."));
             document.body.appendChild(script!);
           });
         }
@@ -66,31 +96,27 @@ const AestheticSimulator: React.FC<AestheticSimulatorProps> = ({ imageSrc, onBac
             clientId: credentials.clientId, 
             clientSecret: credentials.clientSecret,
             language: 'es',
-            region: 'EU', // Change to 'US' or 'AP' if needed based on your key origin
+            region: 'EU', 
           });
 
-          // Once initialized, load the image captured previously
           if (window.YMK.source && imageSrc) {
              window.YMK.source.set(imageSrc);
           }
           
-          // Open/Start the widget
           window.YMK.open();
-          
           setLoading(false);
+          // Auto-reveal analysis after a short delay
+          setTimeout(() => setShowAnalysis(true), 2500);
         }
       } catch (err: any) {
-        console.error("Perfect Corp Init Error:", err);
-        setSdkError(err.message || "Error inicializando el análisis facial. Verifique sus credenciales.");
+        setSdkError(err.message || "Error inicializando el análisis facial.");
         setLoading(false);
-        setCredentials(null); // Reset to allow retry
       }
     };
 
     initPerfectCorpSDK();
 
     return () => {
-      // Cleanup if necessary
       if (script && document.body.contains(script)) {
         document.body.removeChild(script);
       }
@@ -98,131 +124,155 @@ const AestheticSimulator: React.FC<AestheticSimulatorProps> = ({ imageSrc, onBac
   }, [imageSrc, credentials]);
 
   return (
-    <div className="animate-fade-in w-full max-w-6xl mx-auto pb-20">
-        <div className="mb-6 flex items-center justify-between">
-            <button onClick={onBack} className="text-slate-500 hover:text-slate-800 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+    <div className="animate-fade-in w-full max-w-7xl mx-auto pb-20 px-4">
+        <div className="mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+            <button onClick={onBack} className="text-slate-400 hover:text-white text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2 transition-colors">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                Volver a Resultados Dentales
+                REGRESAR A SIMULACIÓN DENTAL
             </button>
-            <span className="text-indigo-600 text-xs font-bold uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                </span>
-                Módulo Estético Avanzado
-            </span>
+            <div className="flex items-center gap-4">
+                {credentials && (
+                    <button onClick={handleLogout} className="text-[10px] text-red-500/50 hover:text-red-500 font-bold uppercase tracking-widest transition-colors">
+                        [ REINICIAR_AUTH ]
+                    </button>
+                )}
+                <div className="bg-indigo-600/10 border border-indigo-500/30 px-6 py-2 rounded-full flex items-center gap-3">
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                    </span>
+                    <span className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.4em]">FaceAI: Módulo de Armonización</span>
+                </div>
+            </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden relative min-h-[700px] flex flex-col">
+        <div className="flex flex-col lg:flex-row gap-8">
             
-            {/* TOOLBAR HEADER */}
-            <div className="bg-slate-900 text-white p-4 flex justify-between items-center z-10 relative shadow-md">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg border border-white/20">
-                        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <span className="font-light tracking-wide text-lg block leading-none">Simetría <b className="font-bold">FaceAI</b></span>
-                        <span className="text-[10px] text-slate-400 uppercase tracking-widest">Powered by Perfect Corp</span>
-                    </div>
-                </div>
+            {/* 1. CONTENEDOR SDK (VISUALIZADOR PRINCIPAL) */}
+            <div className="lg:w-2/3 bg-[#121418] rounded-[3rem] overflow-hidden border border-white/5 shadow-3xl relative min-h-[600px] lg:min-h-[800px]">
                 
-                {loading && !sdkError && (
-                    <div className="flex items-center gap-2 text-xs font-mono text-indigo-300">
-                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                {/* OVERLAY DE ANÁLISIS MANDIBULAR (Visual Cues) */}
+                {showAnalysis && !loading && (
+                    <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
+                        {/* Vector de Tensión Mandibular */}
+                        <svg className="absolute inset-0 w-full h-full opacity-60">
+                            <defs>
+                                <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="transparent" />
+                                    <stop offset="50%" stopColor="#6366f1" />
+                                    <stop offset="100%" stopColor="transparent" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M 30,70 Q 50,95 70,70" stroke="url(#glow)" strokeWidth="2" fill="none" strokeDasharray="10,5" className="animate-[dash_5s_linear_infinite]" transform="scale(1.5)" />
                         </svg>
-                        INICIALIZANDO MOTOR...
+
+                        {/* Hotspots en la mandíbula */}
+                        <div className="absolute top-[65%] left-[30%] w-32 h-[1px] bg-indigo-500/50 animate-pulse origin-left rotate-45"></div>
+                        <div className="absolute top-[65%] right-[30%] w-32 h-[1px] bg-indigo-500/50 animate-pulse origin-right -rotate-45"></div>
+                        
+                        <div className="absolute top-[62%] left-[28%] bg-indigo-600 p-1.5 rounded-full border-2 border-white shadow-xl animate-bounce"></div>
+                        <div className="absolute top-[62%] right-[28%] bg-indigo-600 p-1.5 rounded-full border-2 border-white shadow-xl animate-bounce"></div>
                     </div>
                 )}
-            </div>
 
-            {/* MAIN CONTENT AREA */}
-            <div className="flex-grow relative bg-slate-50 flex flex-col">
-                
-                {/* 1. CREDENTIALS FORM (Secure Box) */}
+                {loading && (
+                    <div className="absolute inset-0 z-30 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center">
+                        <div className="w-20 h-20 border-t-2 border-indigo-500 rounded-full animate-spin"></div>
+                        <p className="mt-6 text-indigo-400 font-black text-[10px] uppercase tracking-[0.5em]">Escaneando Geometría Facial...</p>
+                    </div>
+                )}
+
                 {!credentials && (
-                    <div className="absolute inset-0 z-30 bg-slate-100 flex items-center justify-center p-4">
-                        <div className="bg-white w-full max-w-md p-8 rounded-xl shadow-2xl border border-slate-200">
-                            <div className="text-center mb-6">
-                                <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3 text-indigo-600">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                    </svg>
-                                </div>
-                                <h3 className="text-xl font-light text-slate-800">Activación de Módulo</h3>
-                                <p className="text-xs text-slate-500 mt-1">Ingresa tus credenciales de Perfect Corp Console</p>
-                            </div>
-
-                            <form onSubmit={handleCredentialsSubmit} className="space-y-4">
+                    <div className="absolute inset-0 z-40 bg-slate-900/95 flex items-center justify-center p-8">
+                        <div className="w-full max-w-md bg-black/50 backdrop-blur-2xl p-10 rounded-[2.5rem] border border-white/10 shadow-2xl">
+                             <h3 className="text-white text-2xl font-light mb-8 text-center uppercase tracking-widest">Activación <span className="font-bold text-indigo-500">Módulo Estético</span></h3>
+                             <form onSubmit={handleCredentialsSubmit} className="space-y-6">
                                 <div>
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Client ID</label>
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3 block">Service Client ID</label>
                                     <input 
                                         type="text" 
-                                        className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-colors font-mono"
-                                        placeholder="Pegar Client ID aquí"
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-white text-xs font-mono focus:border-indigo-500 transition-colors"
+                                        placeholder="PC-ID-XXXXX"
                                         value={clientIdInput}
                                         onChange={(e) => setClientIdInput(e.target.value)}
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Client Secret</label>
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3 block">Secure Token</label>
                                     <input 
                                         type="password" 
-                                        className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-colors font-mono"
-                                        placeholder="Pegar Secret Key aquí"
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-white text-xs font-mono focus:border-indigo-500 transition-colors"
+                                        placeholder="••••••••••••"
                                         value={clientSecretInput}
                                         onChange={(e) => setClientSecretInput(e.target.value)}
                                         required
                                     />
                                 </div>
-                                <div className="pt-2">
-                                    <Button type="submit" className="w-full" variant="secondary">
-                                        CONECTAR E INICIAR
-                                    </Button>
-                                    {sdkError && (
-                                        <p className="text-red-500 text-xs mt-3 text-center bg-red-50 p-2 rounded border border-red-100">
-                                            {sdkError}
-                                        </p>
-                                    )}
-                                </div>
-                            </form>
-                            <p className="text-[10px] text-center text-slate-400 mt-6 border-t border-slate-100 pt-4">
-                                Las claves se usarán solo para esta sesión y no se guardarán permanentemente.
-                            </p>
+                                <Button type="submit" variant="secondary" className="w-full !py-6 text-[11px] font-black tracking-[0.2em] shadow-indigo-500/20 shadow-lg">CONECTAR Y ANALIZAR</Button>
+                             </form>
                         </div>
                     </div>
                 )}
 
-                {/* 2. LOADING STATE */}
-                {loading && (
-                     <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-white/90 backdrop-blur-sm">
-                         <div className="w-16 h-16 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
-                         <h3 className="text-slate-800 font-bold uppercase tracking-widest text-sm">Autenticando</h3>
-                         <p className="text-slate-500 text-xs mt-2">Conectando con servidores biométricos...</p>
-                     </div>
-                )}
+                <div ref={containerRef} className="w-full h-full min-h-[600px] flex-grow"></div>
+            </div>
 
-                {/* 3. PERFECT CORP CONTAINER */}
-                <div 
-                    ref={containerRef} 
-                    id="perfect-corp-container" 
-                    className="flex-grow w-full h-full bg-slate-100 relative min-h-[600px]"
-                >
-                    {/* The SDK usually injects an Iframe here. */}
+            {/* 2. PANEL DE HALLAZGOS Y RECOMENDACIONES (DERECHA) */}
+            <div className={`lg:w-1/3 space-y-8 transition-all duration-700 ${showAnalysis ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-12'}`}>
+                
+                {/* Métrica de Jawline */}
+                <div className="bg-[#1a1c22] rounded-[2.5rem] p-10 border border-white/5 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-colors"></div>
+                    <h3 className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.5em] mb-10 pb-4 border-b border-white/5">Reporte de Definición Mandibular</h3>
+                    
+                    <div className="space-y-8">
+                        {JawlineMetrics.map((m, idx) => (
+                            <div key={idx} className="relative">
+                                <div className="flex justify-between items-end mb-3">
+                                    <span className="text-[11px] font-bold text-white uppercase tracking-wider">{m.label}</span>
+                                    <span className={`text-[9px] font-mono px-2 py-0.5 rounded ${m.status === 'Ideal' ? 'text-green-400 bg-green-400/10' : 'text-amber-400 bg-amber-400/10'}`}>{m.status}</span>
+                                </div>
+                                <div className="text-[12px] text-indigo-300 font-mono mb-2">{m.value}</div>
+                                <p className="text-[10px] text-slate-500 font-light leading-relaxed">{m.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Plan de Tratamiento Sugerido */}
+                <div className="bg-gradient-to-br from-indigo-900/40 to-black rounded-[2.5rem] p-10 border border-indigo-500/20 shadow-2xl">
+                    <h3 className="text-white text-xs font-black uppercase tracking-[0.4em] mb-10">Propuesta de Armonización</h3>
+                    <div className="space-y-6">
+                        {JawlineTreatments.map((t, idx) => (
+                            <div key={idx} className="flex items-start gap-5 p-5 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all cursor-pointer group">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-600/20 flex items-center justify-center text-indigo-400 font-black border border-indigo-500/30 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                    {idx + 1}
+                                </div>
+                                <div>
+                                    <h4 className="text-white text-[11px] font-bold uppercase mb-1">{t.name}</h4>
+                                    <p className="text-[9px] text-indigo-300 uppercase font-mono tracking-widest mb-1">{t.tech}</p>
+                                    <p className="text-[10px] text-slate-500 font-light italic">{t.goal}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <Button 
+                        onClick={() => window.open('https://wa.me/56935572986?text=Quiero%20consultar%20por%20el%20Plan%20de%20Armonizac%C3%B3n%20Mandibular%20v4', '_blank')}
+                        className="w-full mt-10 !py-5 !bg-indigo-600 !text-white text-[11px] font-black shadow-2xl shadow-indigo-500/40"
+                    >
+                        SOLICITAR EVALUACIÓN MÉDICA
+                    </Button>
                 </div>
             </div>
-
-            {/* FOOTER INFO */}
-            <div className="bg-white border-t border-slate-200 p-3 text-center text-[10px] text-slate-400 uppercase tracking-wider">
-                Simetría AI by Clínica Miró &bull; Tecnología de Análisis Facial Avanzado
-            </div>
-
         </div>
+
+        <style>{`
+            @keyframes dash {
+                to { stroke-dashoffset: -50; }
+            }
+        `}</style>
     </div>
   );
 };

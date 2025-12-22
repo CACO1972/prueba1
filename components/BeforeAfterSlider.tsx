@@ -45,7 +45,6 @@ const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ before, after }) 
     };
     const handleTouchMove = (e: TouchEvent) => {
       if (isDragging && !zoomMode) handleMove(e.touches[0].clientX);
-      // Touch zoom logic is complex, for simple implementation we disable drag slide in zoom mode
     };
     const handleTouchEnd = () => setIsDragging(false);
 
@@ -85,12 +84,14 @@ const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ before, after }) 
      }
   }, [zoomMode, tourMode]);
 
-  // --- TOUR HOTSPOTS DATA ---
-  // Positioned generally around the smile area (center)
+  // --- ENHANCED TOUR HOTSPOTS DATA ---
   const tourPoints = [
-      { x: 45, y: 55, title: "Luminosidad", desc: "Recuperación del blanco natural sin perder textura." },
-      { x: 55, y: 52, title: "Simetría", desc: "Balance de líneas medias con tu rostro." },
-      { x: 50, y: 65, title: "Armonía", desc: "Curva de sonrisa adaptada a tus labios." }
+      { x: 50, y: 52, title: "Línea Media Facial", desc: "Alineación vertical exacta con el eje de simetría del rostro para un equilibrio perfecto." },
+      { x: 40, y: 58, title: "Curvatura Labial", desc: "Rediseño de los bordes incisales siguiendo la curvatura natural del labio inferior." },
+      { x: 25, y: 40, title: "Soporte de Pómulos", desc: "La nueva estructura dental proporciona un soporte muscular que realza la definición de los pómulos." },
+      { x: 50, y: 30, title: "Balance de Tercios", desc: "Armonización de las proporciones entre el tercio medio e inferior para un aspecto más juvenil." },
+      { x: 65, y: 55, title: "Corredores Bucales", desc: "Optimización del espacio lateral para una sonrisa más amplia y estéticamente llena." },
+      { x: 50, y: 65, title: "Exposición Gingival", desc: "Ajuste preciso de la línea de la encía para un marco dental armónico y saludable." }
   ];
 
   return (
@@ -98,7 +99,7 @@ const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ before, after }) 
         {/* CONTROLS */}
         <div className="flex justify-between items-center px-2">
             <div className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">
-                {zoomMode ? "Modo Exploración Detallada" : (tourMode ? "Tour Educativo Activo" : "Desliza para Comparar")}
+                {zoomMode ? "Modo Exploración Detallada" : (tourMode ? "Tour de Análisis Facial Activo" : "Desliza para Comparar")}
             </div>
             <div className="flex gap-2">
                 <button 
@@ -111,13 +112,13 @@ const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ before, after }) 
                     </svg>
                 </button>
                 <button 
-                    onClick={() => { setTourMode(!tourMode); setZoomMode(false); setSliderPosition(0); /* Reveal full after image for tour */ }}
+                    onClick={() => { setTourMode(!tourMode); setZoomMode(false); setSliderPosition(0); }}
                     className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border transition-all flex items-center gap-1 ${tourMode ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Tour Virtual
+                    Tour Estético
                 </button>
             </div>
         </div>
@@ -170,13 +171,13 @@ const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ before, after }) 
                                 {/* Pulse Dot */}
                                 <div className="relative -ml-3 -mt-3 w-6 h-6 flex items-center justify-center cursor-pointer">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-600 border-2 border-white shadow-sm"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-600 border-2 border-white shadow-[0_0_10px_rgba(79,70,229,0.5)]"></span>
                                 </div>
                                 
-                                {/* Tooltip */}
-                                <div className="absolute top-6 left-1/2 -translate-x-1/2 w-48 bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border-l-2 border-indigo-500 opacity-0 group-hover/hotspot:opacity-100 transition-opacity duration-300 pointer-events-none transform translate-y-2 group-hover/hotspot:translate-y-0">
-                                    <h4 className="text-xs font-bold text-indigo-900 uppercase mb-1">{point.title}</h4>
-                                    <p className="text-[10px] text-slate-600 leading-relaxed">{point.desc}</p>
+                                {/* Tooltip - Responsive positioning */}
+                                <div className={`absolute ${point.y > 50 ? 'bottom-8' : 'top-8'} left-1/2 -translate-x-1/2 w-56 bg-white/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border-l-4 border-indigo-500 opacity-0 group-hover/hotspot:opacity-100 transition-all duration-300 pointer-events-none transform ${point.y > 50 ? 'translate-y-2 group-hover/hotspot:translate-y-0' : '-translate-y-2 group-hover/hotspot:translate-y-0'}`}>
+                                    <h4 className="text-[11px] font-black text-indigo-900 uppercase tracking-widest mb-1.5">{point.title}</h4>
+                                    <p className="text-[10px] text-slate-600 leading-relaxed font-medium">{point.desc}</p>
                                 </div>
                             </div>
                         ))}
@@ -185,7 +186,7 @@ const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ before, after }) 
             </div>
 
             {/* SLIDER HANDLE (Hidden in Zoom or Full Tour Mode) */}
-            {!zoomMode && (
+            {!zoomMode && !tourMode && (
                 <div 
                     className="absolute top-0 bottom-0 w-1 z-30 pointer-events-none"
                     style={{ left: `${sliderPosition}%` }}
@@ -202,7 +203,7 @@ const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ before, after }) 
             )}
             
             {/* LABELS */}
-            {!zoomMode && (
+            {!zoomMode && !tourMode && (
                 <>
                     <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur text-white text-[10px] px-2 py-1 rounded font-medium uppercase tracking-wider">Original</div>
                     <div className="absolute bottom-4 right-4 bg-amber-500/90 backdrop-blur text-white text-[10px] px-2 py-1 rounded font-medium uppercase tracking-wider shadow-sm">Simetría</div>

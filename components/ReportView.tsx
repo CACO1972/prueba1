@@ -8,14 +8,48 @@ interface ReportViewProps {
   onReset: () => void;
 }
 
+const AnalysisHotspots = [
+  { x: 50, y: 55, label: "LUMINOSIDAD", desc: "Recuperación del blanco natural sin perder textura." },
+  { x: 45, y: 35, label: "VECTORES", desc: "Ajuste de soporte en el labio superior para efecto lifting." },
+  { x: 55, y: 48, label: "SIMETRÍA", desc: "Equilibrio de troneras y corredores bucales." }
+];
+
+const DiagnosticCards = [
+  { title: "Efecto Lifting & Flacidez", priority: "ALTA", desc: "Necesidad de recuperación de vectores ascendentes en el tercio inferior." },
+  { title: "Perfilado Nariz", priority: "MEDIA", desc: "Optimización del ángulo nasolabial para mejorar la proyección de la sonrisa." },
+  { title: "Labios (Volumen y Forma)", priority: "ALTA", desc: "Ajuste de bermellón para enmarcar la nueva estética dental." },
+  { title: "Líneas de Expresión", priority: "BAJA", desc: "Tratamiento preventivo para suavizar el contorno periocular al sonreír." }
+];
+
+const SymmetryMetrics = [
+  { side: "IZQUIERDA", score: "88%", dev: "-1.2mm", status: "Estable" },
+  { side: "DERECHA", score: "92%", dev: "+0.8mm", status: "Óptimo" }
+];
+
+const RecommendedProcedures = [
+  { name: "Armonización con Ácido Hialurónico", target: "Surco Nasogeniano & Labios", duration: "12-18 meses" },
+  { name: "Bioestimulación de Colágeno", target: "Tercio Inferior (Jawline)", duration: "24 meses" },
+  { name: "Toxina Botulínica Tipo A", target: "Músculo Masetero & Periorbital", duration: "4-6 meses" }
+];
+
 const ReportView: React.FC<ReportViewProps> = ({ originalImage, generatedImage, onReset }) => {
-  const [loading, setLoading] = useState(true);
-  const [timeLeft, setTimeLeft] = useState(48 * 60 * 60); // 48 hours in seconds
+  const [isReady, setIsReady] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [activeHotspot, setActiveHotspot] = useState<number | null>(null);
+  const [timeLeft, setTimeLeft] = useState(48 * 60 * 60);
 
   useEffect(() => {
-    // Simulate "Generating Report" delay
-    const timer = setTimeout(() => setLoading(false), 3000);
-    return () => clearTimeout(timer);
+    const timer = setInterval(() => {
+      setLoadingProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(timer);
+          setTimeout(() => setIsReady(true), 500);
+          return 100;
+        }
+        return prev + 1;
+      });
+    }, 40);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -32,232 +66,233 @@ const ReportView: React.FC<ReportViewProps> = ({ originalImage, generatedImage, 
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const handleDownloadImage = () => {
-    const link = document.createElement('a');
-    link.href = generatedImage;
-    link.download = `simetria-miro-diseño-${Date.now()}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handlePrintReport = () => {
-    window.print();
-  };
-
-  if (loading) {
+  if (!isReady) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center animate-fade-in">
-        <div className="relative w-24 h-24 mb-6">
-           <div className="absolute inset-0 border-t-2 border-amber-500 rounded-full animate-spin"></div>
-           <div className="absolute inset-2 border-r-2 border-cyan-400 rounded-full animate-spin" style={{ animationDirection: 'reverse' }}></div>
-           <div className="absolute inset-0 flex items-center justify-center text-xs font-mono text-amber-500 animate-pulse">
-             AI
-           </div>
-        </div>
-        <h2 className="text-xl font-light text-slate-800 tracking-widest uppercase">Generando Informe SIMETRÍA</h2>
-        <p className="text-slate-500 text-sm mt-2">Compilando análisis biométrico y presupuesto...</p>
+      <div className="fixed inset-0 z-[100] bg-[#050505] flex flex-col items-center justify-center p-6 text-center">
+          <div className="relative w-48 h-48 mb-12">
+              <svg className="w-full h-full transform -rotate-90">
+                  <circle cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/5" />
+                  <circle cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="2" fill="transparent" 
+                      className="text-amber-500 transition-all duration-300" 
+                      style={{ strokeDasharray: 502, strokeDashoffset: 502 - (502 * loadingProgress) / 100 }} 
+                  />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-white text-3xl font-light tracking-tighter">{loadingProgress}%</span>
+                  <span className="text-[8px] text-amber-500 font-black tracking-widest uppercase">Sync_AI</span>
+              </div>
+          </div>
+          <h2 className="text-white text-lg font-light tracking-[0.4em] uppercase mb-4">Computando Diagnóstico 360</h2>
+          <div className="space-y-1">
+              <p className="text-slate-600 text-[9px] font-mono uppercase tracking-widest">Analizando Hitos Óseos...</p>
+              <p className="text-slate-600 text-[9px] font-mono uppercase tracking-widest">Sincronizando Mapeo Facial...</p>
+          </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto animate-fade-in pb-20">
-      {/* --- HEADER REPORT --- */}
-      <div className="bg-slate-900 text-white p-6 md:p-10 rounded-t-2xl shadow-2xl relative overflow-hidden border-b border-amber-500/30">
-        <div className="absolute top-0 right-0 p-4 opacity-20">
-          <svg width="100" height="100" viewBox="0 0 100 100" fill="white"><path d="M50 0 L93.3 25 L93.3 75 L50 100 L6.7 75 L6.7 25 Z" /></svg>
-        </div>
-        
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-               <span className="bg-amber-500 text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Premium Access</span>
-               <span className="text-slate-400 text-xs font-mono">ID: #{Math.random().toString(36).substr(2, 6).toUpperCase()}</span>
-            </div>
-            <h1 className="text-3xl md:text-4xl font-light tracking-wide text-white">Informe SIMETRÍA</h1>
-            <p className="text-slate-400 mt-1 font-light">Análisis asistido por Inteligencia Artificial - Simetría</p>
-          </div>
-          <div className="text-right hidden md:block">
-            <div className="text-2xl font-bold text-amber-400">{new Date().toLocaleDateString()}</div>
-            <div className="text-xs text-slate-500 uppercase tracking-widest">Fecha de Emisión</div>
-          </div>
-        </div>
-      </div>
-
-      {/* --- MAIN CONTENT GRID --- */}
-      <div className="bg-white shadow-xl overflow-hidden border border-slate-200">
-        
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
-          
-          {/* LEFT COLUMN: VISUALS (7/12) */}
-          <div className="lg:col-span-7 p-6 md:p-8 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50 flex flex-col gap-8">
-            
-            {/* Simulation Block */}
-            <div>
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
-                Simulación de Resultado
-                </h3>
-                
-                {/* Updated Slider Container is handled internally by component */}
-                <BeforeAfterSlider before={originalImage} after={generatedImage} />
-                
-                <p className="text-[10px] text-slate-400 mt-3 text-center italic">
-                    *Utiliza los controles superiores para activar el Zoom o el Tour Educativo.
-                </p>
-            </div>
-
-            {/* Metrics Chart */}
-            <div>
-                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                    Métricas Comparativas
-                </h3>
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <div className="space-y-6">
-                        {[
-                            { label: "Alineación Dental", before: 62, after: 98, desc: "Corrección de apiñamiento" },
-                            { label: "Proporción (W/H)", before: 74, after: 95, desc: "Ajuste a Golden Ratio" },
-                            { label: "Luminosidad", before: 58, after: 92, desc: "Escala B1 (Natural White)" }
-                        ].map((m, i) => (
-                            <div key={i}>
-                                <div className="flex justify-between items-end mb-2">
-                                    <span className="text-xs font-bold text-slate-700 uppercase">{m.label}</span>
-                                    <span className="text-[10px] text-slate-400 italic">{m.desc}</span>
-                                </div>
-                                
-                                {/* Bars */}
-                                <div className="space-y-1.5">
-                                    {/* Before Bar */}
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[9px] font-mono text-slate-400 w-12 text-right">ACTUAL</span>
-                                        <div className="flex-grow h-2 bg-slate-100 rounded-full overflow-hidden">
-                                            <div className="h-full bg-slate-300" style={{ width: `${m.before}%` }}></div>
-                                        </div>
-                                        <span className="text-[9px] font-mono text-slate-500 w-8">{m.before}%</span>
-                                    </div>
-
-                                    {/* After Bar */}
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[9px] font-mono text-amber-600 font-bold w-12 text-right">SIMETRÍA</span>
-                                        <div className="flex-grow h-2 bg-slate-100 rounded-full overflow-hidden">
-                                            <div className="h-full bg-gradient-to-r from-amber-400 to-amber-500" style={{ width: `${m.after}%` }}></div>
-                                        </div>
-                                        <span className="text-[9px] font-mono text-amber-600 font-bold w-8">{m.after}%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-          </div>
-
-          {/* RIGHT COLUMN: ANALYSIS & ACTIONS (5/12) */}
-          <div className="lg:col-span-5 bg-white p-6 md:p-8 flex flex-col h-full relative">
-             
-             {/* ANALYSIS LIST */}
-             <div className="mb-8">
-               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em] mb-6">Hallazgos Clínicos (IA)</h3>
-               <ul className="space-y-4">
-                 {[
-                   "Alineación del arco dental superior optimizada.",
-                   "Corrección de luminosidad y tono (B1/BL1).",
-                   "Rediseño de bordes incisales para rejuvenecimiento.",
-                   "Proporción áurea aplicada a la línea de la sonrisa."
-                 ].map((item, i) => (
-                   <li key={i} className="flex items-start gap-3 text-slate-600 text-sm leading-relaxed">
-                     <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                     </svg>
-                     {item}
-                   </li>
-                 ))}
-               </ul>
-             </div>
-
-             {/* BUDGET ESTIMATION */}
-             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-8">
-                <div className="flex justify-between items-center mb-2">
-                   <span className="text-xs font-bold text-slate-500 uppercase">Presupuesto Estimado</span>
-                   <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase">Ref. Carillas Cerámicas</span>
-                </div>
-                <div className="text-3xl font-light text-slate-800">
-                   $1.8M <span className="text-lg text-slate-400">-</span> $2.8M <span className="text-xs text-slate-400 font-medium">CLP</span>
-                </div>
-                <p className="text-[10px] text-slate-400 mt-2 italic">*Valores referenciales sujetos a evaluación clínica presencial.</p>
-             </div>
-
-             {/* COUPON TICKET */}
-             <div className="relative bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-5 text-white overflow-hidden shadow-lg group hover:shadow-amber-500/20 transition-all cursor-pointer border border-slate-700 mb-auto">
-                <div className="absolute right-0 top-0 h-full w-24 bg-white/5 skew-x-12 transform translate-x-12 group-hover:translate-x-full transition-transform duration-700"></div>
-                
-                <div className="flex justify-between items-start relative z-10">
-                   <div>
-                      <div className="text-amber-400 font-bold text-xs uppercase tracking-widest mb-1">Tu Beneficio Exclusivo</div>
-                      <div className="text-2xl font-bold text-white">10% DESCUENTO</div>
-                      <div className="text-xs text-slate-400 mt-1">En tu tratamiento en Simetría.</div>
-                   </div>
-                   <div className="text-right">
-                      <div className="text-[10px] text-slate-500 uppercase">Vence en</div>
-                      <div className="font-mono text-amber-400 text-lg font-bold">{formatTime(timeLeft)}</div>
-                   </div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
-                   <span className="font-mono text-slate-400 tracking-[0.2em] text-sm">CÓDIGO:</span>
-                   <span className="font-mono bg-white/10 px-3 py-1 rounded text-amber-300 font-bold tracking-widest border border-amber-500/30">SIMETRIA-AI</span>
-                </div>
-             </div>
-
-             {/* ACTIONS */}
-             <div className="mt-8 space-y-3">
-               <Button onClick={() => window.open('https://wa.me/56935572986?text=Hola,%20tengo%20mi%20código%20SIMETRIA-AI%20y%20quiero%20agendar%20mi%20evaluación', '_blank')} className="w-full py-4 text-sm font-bold shadow-lg shadow-amber-500/20">
-                  AGENDAR Y APLICAR DESCUENTO
-               </Button>
-               
-               <div className="grid grid-cols-2 gap-3">
-                 <button onClick={handleDownloadImage} className="flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 rounded-lg text-slate-600 text-xs font-bold uppercase hover:bg-slate-50 transition-colors">
-                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                   Imagen HD
-                 </button>
-                 <button onClick={handlePrintReport} className="flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 rounded-lg text-slate-600 text-xs font-bold uppercase hover:bg-slate-50 transition-colors">
-                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                   Imprimir PDF
-                 </button>
-               </div>
-             </div>
-
-          </div>
-        </div>
-        
-        {/* NEW: AI Methodology Explanation */}
-        <div className="bg-slate-50 p-6 md:p-8 border-t border-slate-200">
-            <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center flex-shrink-0 text-indigo-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                </div>
-                <div>
-                    <h3 className="text-sm font-bold text-slate-800 uppercase mb-2">Metodología de Procesamiento AI</h3>
-                    <p className="text-xs text-slate-500 leading-relaxed text-justify">
-                        Esta simulación ha sido generada utilizando redes neuronales convolucionales (CNN) entrenadas con más de 10.000 casos clínicos de éxito. 
-                        El algoritmo analiza <strong>128 puntos de referencia biométricos</strong> en su rostro para calcular la curva de la sonrisa ideal, 
-                        aplicando principios de la <strong>Proporción Áurea</strong> para armonizar el tamaño, forma y posición de los dientes con sus rasgos faciales únicos, 
-                        manteniendo una textura y reflexión de luz natural.
-                    </p>
-                </div>
-            </div>
-        </div>
-      </div>
+    <div className="w-full max-w-6xl mx-auto animate-fade-in pb-20 px-4 md:px-0">
       
-      <div className="text-center mt-8">
-        <button onClick={onReset} className="text-slate-400 hover:text-slate-600 text-xs font-bold uppercase tracking-widest transition-colors">
-           ← Iniciar Nueva Simulación
-        </button>
+      {/* 1. HEADER DE PRESTIGIO */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6 print:mb-8">
+          <div className="flex items-center gap-6">
+              <div className="w-16 h-16 bg-white p-2 rounded-xl flex items-center justify-center shadow-xl print:shadow-none print:border print:border-slate-200">
+                  <img src="https://mirousa.com/wp-content/uploads/2022/10/logo-miro-vertical.png" alt="Logo" className="w-full h-full object-contain" />
+              </div>
+              <div className="text-left">
+                  <h1 className="text-3xl md:text-4xl font-light text-white leading-none tracking-tighter print:text-slate-900">INFORME <span className="font-bold text-amber-500">BIOMÉTRICO ELITE</span></h1>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] mt-2 print:text-slate-400">Symmetry Engine v4.0 &bull; Clínica Miró Certification</p>
+              </div>
+          </div>
+          <div className="no-print hidden md:flex gap-4">
+              <button onClick={() => window.print()} className="px-6 py-2 rounded-full border border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/5 transition-all">Exportar PDF</button>
+              <button onClick={onReset} className="px-6 py-2 rounded-full bg-amber-500 text-slate-900 text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all">Nueva Simulación</button>
+          </div>
       </div>
 
+      {/* 2. AREA DE VISUALIZACIÓN INTERACTIVA */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16 print:gap-4 print:mb-8">
+          
+          {/* COMPARATIVA PRINCIPAL */}
+          <div className="lg:col-span-8 bg-[#121418] rounded-[2.5rem] p-6 md:p-10 border border-white/5 shadow-3xl print:bg-white print:border-slate-200 print:rounded-none print:shadow-none print:p-0">
+              <div className="flex justify-between items-center mb-8 print:mb-4">
+                  <h3 className="text-xs font-black text-amber-500 uppercase tracking-[0.4em] print:text-amber-700">Arquitectura Dental Dinámica</h3>
+                  <div className="flex gap-4 print:hidden">
+                       <span className="text-[9px] text-slate-500 font-mono">MAPA_ORO_V4</span>
+                       <span className="text-[9px] text-green-500 font-mono">IA_VALID_99.8%</span>
+                  </div>
+              </div>
+              <div className="relative rounded-[2rem] overflow-hidden border border-white/5 shadow-inner print:rounded-none print:border-slate-300">
+                  <BeforeAfterSlider before={originalImage} after={generatedImage} />
+                  
+                  {/* HOTSPOTS INTERACTIVOS - Ocultos en impresión para limpieza visual */}
+                  <div className="absolute inset-0 pointer-events-none no-print">
+                      {AnalysisHotspots.map((pt, i) => (
+                          <div key={i} className="absolute pointer-events-auto group" style={{ left: `${pt.x}%`, top: `${pt.y}%` }}>
+                              <button 
+                                  onClick={() => setActiveHotspot(activeHotspot === i ? null : i)}
+                                  className="relative flex h-6 w-6 items-center justify-center"
+                              >
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-40"></span>
+                                  <span className="relative inline-flex rounded-full h-3 w-3 bg-white border-2 border-indigo-600 shadow-lg"></span>
+                              </button>
+                              
+                              <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 w-48 bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-2xl border-l-4 border-indigo-600 transition-all duration-300 ${activeHotspot === i ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 translate-y-4 pointer-events-none'}`}>
+                                  <p className="text-[10px] font-black text-indigo-900 uppercase tracking-widest mb-1">{pt.label}</p>
+                                  <p className="text-[10px] text-slate-600 leading-tight">{pt.desc}</p>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+          </div>
+
+          {/* DASHBOARD DE MÉTRICAS */}
+          <div className="lg:col-span-4 flex flex-col gap-6 print:gap-4">
+              <div className="bg-[#1a1c22] rounded-[2rem] p-8 border border-white/5 shadow-2xl flex-grow print:bg-white print:border-slate-200 print:rounded-none print:shadow-none print:p-4">
+                  <h3 className="text-xs font-black text-amber-500 uppercase tracking-[0.4em] mb-8 border-b border-white/5 pb-4 print:text-amber-700 print:border-slate-100">Diagnóstico Orofacial</h3>
+                  <div className="space-y-6 print:space-y-4">
+                      {DiagnosticCards.map((card, i) => (
+                          <div key={i} className="group cursor-default">
+                              <div className="flex justify-between items-center mb-2">
+                                  <h4 className="text-[11px] font-bold text-white uppercase tracking-wider print:text-slate-900">{card.title}</h4>
+                                  <span className={`text-[8px] px-2 py-0.5 rounded font-black tracking-widest ${card.priority === 'ALTA' ? 'bg-red-500/20 text-red-400' : card.priority === 'MEDIA' ? 'bg-amber-500/20 text-amber-400' : 'bg-green-500/20 text-green-400'} print:bg-slate-100 print:text-slate-700`}>
+                                      {card.priority}
+                                  </span>
+                              </div>
+                              <p className="text-[10px] text-slate-500 leading-relaxed font-light group-hover:text-slate-300 transition-colors print:text-slate-600">{card.desc}</p>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+
+              {/* CUPON / CALL TO ACTION (Oculto en parte en PDF) */}
+              <div className="bg-gradient-to-br from-amber-600 to-amber-400 rounded-[2.5rem] p-8 text-center shadow-3xl relative overflow-hidden group print:bg-none print:bg-slate-50 print:border print:border-slate-200 print:rounded-none print:shadow-none print:p-6">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent)] print:hidden"></div>
+                  <span className="text-[9px] font-black text-slate-900 uppercase tracking-[0.4em] mb-2 block relative z-10">Beneficio Reservado</span>
+                  <h2 className="text-4xl font-black text-slate-900 mb-6 italic tracking-tighter relative z-10">10% <span className="text-white print:text-amber-700">DESC</span></h2>
+                  
+                  <div className="bg-white/10 backdrop-blur border border-white/20 py-4 rounded-2xl mb-6 relative z-10 print:bg-white print:border-slate-300">
+                      <p className="text-[9px] text-slate-800 font-bold uppercase tracking-widest mb-1">CÓDIGO DE VALIDACIÓN</p>
+                      <p className="text-2xl font-mono font-black text-slate-900">SIMETRIA-V4</p>
+                  </div>
+
+                  <div className="no-print">
+                      <a 
+                        href="https://wa.me/56935572986?text=Hola%2C%20tengo%20mi%20Informe%20Elite%20y%20quiero%20mi%20evaluaci%C3%B3n%20para%20usar%20mi%20cup%C3%B3n%20SIMETRIA-V4"
+                        target="_blank"
+                        className="block w-full bg-slate-900 text-white font-black py-5 rounded-2xl text-[12px] uppercase tracking-[0.2em] shadow-2xl hover:bg-slate-800 transition-all relative z-10"
+                      >
+                        Agendar Evaluación
+                      </a>
+                  </div>
+                  
+                  <div className="mt-4 flex items-center justify-center gap-2 text-slate-800 text-[9px] font-black uppercase tracking-widest relative z-10 print:mt-2">
+                      <span className="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse print:animate-none"></span>
+                      Validez: <span className="text-slate-900 font-mono">48 HORAS POST-EMISIÓN</span>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      {/* 3. NUEVA SECCIÓN: ANÁLISIS DE SIMETRÍA BILATERAL (Elite Content) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 print:gap-4 print:mb-8 page-break-before">
+          <div className="bg-[#1a1c22] rounded-[2.5rem] p-10 border border-white/5 print:bg-white print:border-slate-200 print:rounded-none print:p-6">
+              <h3 className="text-xs font-black text-indigo-400 uppercase tracking-[0.4em] mb-8 print:text-indigo-800">Comparativa de Perfiles</h3>
+              <div className="flex gap-4 mb-8">
+                  <div className="flex-1 aspect-square rounded-3xl bg-slate-800 overflow-hidden relative border border-white/5 print:border-slate-300">
+                      <img src={originalImage} className="w-full h-full object-cover scale-150 origin-left grayscale" alt="Profile L" />
+                      <div className="absolute inset-0 bg-indigo-500/10"></div>
+                      <span className="absolute bottom-4 left-4 text-[8px] font-black text-white bg-black/50 px-2 py-1 rounded">IZQUIERDO</span>
+                  </div>
+                  <div className="flex-1 aspect-square rounded-3xl bg-slate-800 overflow-hidden relative border border-white/5 print:border-slate-300">
+                      <img src={originalImage} className="w-full h-full object-cover scale-150 origin-right grayscale" alt="Profile R" />
+                      <div className="absolute inset-0 bg-indigo-500/10"></div>
+                      <span className="absolute bottom-4 right-4 text-[8px] font-black text-white bg-black/50 px-2 py-1 rounded">DERECHO</span>
+                  </div>
+              </div>
+              <div className="space-y-4">
+                  {SymmetryMetrics.map((m, i) => (
+                      <div key={i} className="flex items-center justify-between border-b border-white/5 pb-2 print:border-slate-100">
+                          <span className="text-[10px] font-bold text-slate-400 print:text-slate-600">{m.side}</span>
+                          <div className="flex gap-6">
+                              <div className="text-right">
+                                  <span className="block text-[8px] text-slate-600 uppercase">Score</span>
+                                  <span className="text-[11px] font-mono text-white print:text-slate-900">{m.score}</span>
+                              </div>
+                              <div className="text-right">
+                                  <span className="block text-[8px] text-slate-600 uppercase">Dev</span>
+                                  <span className="text-[11px] font-mono text-white print:text-slate-900">{m.dev}</span>
+                              </div>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+          </div>
+
+          <div className="bg-[#1a1c22] rounded-[2.5rem] p-10 border border-white/5 print:bg-white print:border-slate-200 print:rounded-none print:p-6">
+              <h3 className="text-xs font-black text-amber-500 uppercase tracking-[0.4em] mb-8 print:text-amber-800">Plan Estético Recomendado</h3>
+              <div className="space-y-6">
+                  {RecommendedProcedures.map((proc, i) => (
+                      <div key={i} className="relative pl-6 border-l border-amber-500/30">
+                          <div className="absolute top-0 left-[-4px] w-2 h-2 rounded-full bg-amber-500"></div>
+                          <h4 className="text-[11px] font-bold text-white uppercase mb-1 print:text-slate-900">{proc.name}</h4>
+                          <p className="text-[9px] text-slate-500 mb-1 print:text-slate-600"><span className="font-bold text-slate-400">Zona:</span> {proc.target}</p>
+                          <p className="text-[8px] font-mono text-amber-500/70 uppercase">Efectividad Estimada: {proc.duration}</p>
+                      </div>
+                  ))}
+              </div>
+              <div className="mt-10 p-4 bg-white/5 rounded-2xl border border-white/5 print:bg-slate-50 print:border-slate-200">
+                  <p className="text-[9px] text-slate-500 italic leading-relaxed print:text-slate-600">
+                      * Este plan es preliminar. Los procedimientos no invasivos sugeridos complementan el diseño de sonrisa para lograr una armonización facial completa (Full Face Approach).
+                  </p>
+              </div>
+          </div>
+      </div>
+
+      {/* 4. SECCIÓN EBOOKS Y ASSETS */}
+      <div className="bg-[#1a1c22] rounded-[3rem] p-10 md:p-16 border border-white/5 mb-20 text-center relative overflow-hidden print:bg-white print:border-slate-200 print:rounded-none print:p-8">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 blur-[100px] -z-0 print:hidden"></div>
+          <div className="max-w-3xl mx-auto relative z-10">
+              <h3 className="text-xl md:text-2xl text-white font-light tracking-widest mb-12 print:text-slate-900">CERTIFICACIÓN <span className="text-amber-500 font-bold">ESTÁNDAR MIRÓ</span></h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 print:gap-4">
+                  {[
+                      { icon: "📄", title: "Guía de Implantes", detail: "Todo antes de elegir" },
+                      { icon: "✨", title: "Botox Estético", detail: "Manejo de arrugas" },
+                      { icon: "🕒", title: "Evaluación Online", detail: "Sesión personalizada" }
+                  ].map((asset, i) => (
+                      <div key={i} className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-amber-500/30 transition-all group print:bg-white print:border-slate-200 print:p-4">
+                          <div className="text-4xl mb-4 group-hover:scale-110 transition-transform print:text-2xl print:mb-2">{asset.icon}</div>
+                          <h4 className="text-white text-xs font-black uppercase tracking-widest mb-2 print:text-slate-900">{asset.title}</h4>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-widest print:text-slate-600">{asset.detail}</p>
+                          <div className="no-print">
+                            <button className="mt-6 text-[8px] font-black text-amber-500 uppercase tracking-widest border-b border-amber-500/20 pb-1">Disponible para descarga</button>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+          </div>
+      </div>
+
+      <style>{`
+          @media print {
+              .no-print { display: none !important; }
+              body { background: white !important; color: black !important; padding: 0 !important; margin: 0 !important; }
+              .bg-[#121418], .bg-[#1a1c22] { background: white !important; border-color: #eee !important; box-shadow: none !important; }
+              .text-white { color: #1a1a1a !important; }
+              .text-slate-500, .text-slate-400 { color: #666 !important; }
+              .text-amber-500 { color: #854d0e !important; }
+              .rounded-[2.5rem], .rounded-[3rem], .rounded-[2rem] { border-radius: 8px !important; }
+              .page-break-before { page-break-before: always; }
+              header, footer, .glow-effect { display: none !important; }
+              .aspect-square { height: 150px !important; }
+              main { padding-top: 0 !important; }
+          }
+          /* Safari iOS Fixes */
+          body { -webkit-font-smoothing: antialiased; }
+          .shadow-3xl { box-shadow: 0 50px 100px -20px rgba(0,0,0,0.8); }
+      `}</style>
     </div>
   );
 };
