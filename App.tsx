@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
@@ -6,7 +7,7 @@ import AestheticSimulator from './components/AestheticSimulator';
 import MarketingShowcase from './components/MarketingShowcase';
 import Footer from './components/Footer';
 
-export type AppStep = 'intro' | 'processing' | 'result' | 'aesthetic' | 'marketing';
+export type AppStep = 'intro' | 'processing' | 'result' | 'aesthetic' | 'marketing' | 'demo';
 
 const App: React.FC = () => {
   const [isVerifying, setIsVerifying] = useState(true);
@@ -14,7 +15,6 @@ const App: React.FC = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [hasPaid, setHasPaid] = useState<boolean>(false);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   useEffect(() => {
     const savedStep = sessionStorage.getItem('mir_step') as AppStep;
@@ -22,26 +22,11 @@ const App: React.FC = () => {
     const savedGenerated = sessionStorage.getItem('mir_generated');
     const savedPaid = sessionStorage.getItem('mir_paid') === 'true';
 
-    if (savedStep && savedStep !== 'marketing') setStep(savedStep);
+    if (savedStep && !['marketing', 'demo'].includes(savedStep)) setStep(savedStep);
     if (savedOriginal) setOriginalImage(savedOriginal);
     if (savedGenerated) setGeneratedImage(savedGenerated);
     if (savedPaid) setHasPaid(true);
 
-    const searchParams = new URLSearchParams(window.location.search);
-    const token = searchParams.get('token');
-    const status = searchParams.get('status');
-
-    if (token || status === 'paid') {
-      setHasPaid(true);
-      sessionStorage.setItem('mir_paid', 'true');
-      setStep('result');
-      window.history.replaceState({}, '', window.location.origin + window.location.pathname);
-    } else if (status === 'failure') {
-      setPaymentError("No se pudo confirmar el pago. Por favor intenta nuevamente.");
-      setStep('result');
-      window.history.replaceState({}, '', window.location.origin + window.location.pathname);
-    }
-    
     setIsVerifying(false);
   }, []);
 
@@ -50,8 +35,9 @@ const App: React.FC = () => {
       sessionStorage.setItem('mir_step', step);
       if (originalImage) sessionStorage.setItem('mir_original', originalImage);
       if (generatedImage) sessionStorage.setItem('mir_generated', generatedImage);
+      if (hasPaid) sessionStorage.setItem('mir_paid', 'true');
     }
-  }, [step, originalImage, generatedImage, isVerifying]);
+  }, [step, originalImage, generatedImage, hasPaid, isVerifying]);
 
   const handleReset = () => {
     sessionStorage.clear();
@@ -59,13 +45,12 @@ const App: React.FC = () => {
     setOriginalImage(null);
     setGeneratedImage(null);
     setHasPaid(false);
-    setPaymentError(null);
   };
 
   if (isVerifying) {
     return (
-      <div className="bg-[#0f1115] min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-amber-500/20 border-t-amber-500 rounded-full animate-spin"></div>
+      <div className="bg-[#050608] min-h-screen flex items-center justify-center">
+        <div className="w-12 h-12 border-2 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin shadow-[0_0_20px_rgba(99,102,241,0.3)]"></div>
       </div>
     );
   }
@@ -74,18 +59,22 @@ const App: React.FC = () => {
     <div className="bg-[#050608] min-h-screen text-slate-300 antialiased relative overflow-x-hidden flex flex-col">
       <Glow />
       <Header />
-      <main className="relative z-10 flex-grow flex flex-col pt-32">
-        {paymentError && (
-          <div className="max-w-4xl mx-auto w-full mb-8 px-4">
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-6 py-4 rounded-2xl flex items-center gap-4">
-              <p className="text-[10px] font-black uppercase tracking-widest">{paymentError}</p>
-              <button onClick={() => setPaymentError(null)} className="ml-auto text-xs">✕</button>
-            </div>
-          </div>
+      <main className="relative z-10 flex-grow flex flex-col pt-32 md:pt-40">
+        
+        {step === 'intro' && (
+            <Hero 
+                onStart={() => setStep('processing')} 
+                onOpenDemo={() => setStep('demo')} 
+            />
+        )}
+        
+        {step === 'demo' && (
+            <MarketingShowcase 
+                isDemo={true} 
+                onClose={() => setStep('intro')} 
+            />
         )}
 
-        {step === 'intro' && <Hero onStart={() => setStep('processing')} />}
-        
         {(step === 'processing' || step === 'result') && (
           <ImageProcessor
             step={step}
@@ -97,7 +86,10 @@ const App: React.FC = () => {
                 setGeneratedImage(gen);
                 setStep('result');
             }}
-            onStartAesthetic={() => setStep('aesthetic')}
+            onFormComplete={() => {
+                setHasPaid(true);
+                setStep('result');
+            }}
             onOpenMarketing={() => setStep('marketing')}
             onReset={handleReset}
           />
@@ -121,9 +113,14 @@ const App: React.FC = () => {
 };
 
 const Glow: React.FC = () => (
-  <div className="fixed inset-0 pointer-events-none z-0">
-    <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[100vw] h-[60vh] bg-amber-500/5 blur-[150px] rounded-full" />
-    <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vh] bg-indigo-500/5 blur-[120px] rounded-full" />
+  <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+    {/* Neón Lilas y Azules para profundidad */}
+    <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vh] bg-indigo-600/10 blur-[180px] rounded-full animate-pulse" />
+    <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[60vh] bg-fuchsia-600/5 blur-[160px] rounded-full" />
+    <div className="absolute bottom-[-10%] left-1/2 -translate-x-1/2 w-[100vw] h-[40vh] bg-amber-500/5 blur-[200px] rounded-full" />
+    
+    {/* Textura de rejilla sutil */}
+    <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:40px_40px]"></div>
   </div>
 );
 

@@ -1,12 +1,12 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import Button from './Button';
 
 interface AestheticSimulatorProps {
-  imageSrc: string; // The image captured in the previous step
+  imageSrc: string; 
   onBack: () => void;
 }
 
-// Extend Window interface for Perfect Corp SDK
 declare global {
   interface Window {
     YMK?: {
@@ -21,16 +21,16 @@ declare global {
 }
 
 const JawlineMetrics = [
-  { label: "Ángulo Mandibular", value: "125°", status: "Ideal", desc: "Proyección óptima del ángulo goniaco." },
-  { label: "Definición de Mentón", value: "Subóptima", status: "Mejorable", desc: "Necesidad de proyección anterior (Rellenos)." },
-  { label: "Tensión de Maseteros", value: "Alta", status: "Tratamiento", desc: "Sugerencia: Aplicación de Toxina Botulínica." },
-  { label: "Vectores de Soporte", value: "65%", status: "Preventivo", desc: "Bioestimulación recomendada para prevenir flacidez." }
+  { label: "Ángulo Mandibular", value: "125°", status: "Ideal", desc: "El ángulo goniaco de 125° es el estándar de oro en estética facial para un perfil definido y juvenil." },
+  { label: "Definición de Mentón", value: "Subóptima", status: "Mejorable", desc: "Se detecta una leve retrusión. La proyección anterior equilibraría la proporción del tercio inferior." },
+  { label: "Tensión de Maseteros", value: "Alta", status: "Tratamiento", desc: "La hipertrofia de maseteros puede ensanchar el rostro. Se sugiere relajación muscular para afinar el contorno." },
+  { label: "Vectores de Soporte", value: "65%", status: "Preventivo", desc: "Nivel de colágeno estructural en zona Jowl. Se recomienda bioestimulación para mantener la firmeza lineal." }
 ];
 
 const JawlineTreatments = [
-  { name: "Marcaje Mandibular", tech: "Hialurónico Alta Densidad", goal: "Definir contorno" },
-  { name: "Radiesse / Sculptra", tech: "Bioestimuladores", goal: "Soporte estructural" },
-  { name: "Botox Maseteros", tech: "Relajación Muscular", goal: "Afinamiento facial" }
+  { name: "Marcaje Mandibular", tech: "Hialurónico Alta Densidad", goal: "Crea una línea de transición nítida entre el rostro y el cuello, eliminando sombras indeseadas." },
+  { name: "Radiesse / Sculptra", tech: "Bioestimuladores", goal: "Induce la producción natural de colágeno tipo I y III para un soporte estructural a largo plazo." },
+  { name: "Botox Maseteros", tech: "Relajación Muscular", goal: "Reduce el volumen del músculo masetero, transformando un rostro cuadrado en uno más ovalado y estilizado." }
 ];
 
 const AestheticSimulator: React.FC<AestheticSimulatorProps> = ({ imageSrc, onBack }) => {
@@ -40,14 +40,12 @@ const AestheticSimulator: React.FC<AestheticSimulatorProps> = ({ imageSrc, onBac
   const [showAnalysis, setShowAnalysis] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Form State
   const [clientIdInput, setClientIdInput] = useState('');
   const [clientSecretInput, setClientSecretInput] = useState('');
 
   useEffect(() => {
       const storedClientId = localStorage.getItem('mir_pc_client_id');
       const storedClientSecret = localStorage.getItem('mir_pc_client_secret');
-
       if (storedClientId && storedClientSecret) {
           setCredentials({ clientId: storedClientId, clientSecret: storedClientSecret });
           setLoading(true); 
@@ -73,23 +71,19 @@ const AestheticSimulator: React.FC<AestheticSimulatorProps> = ({ imageSrc, onBac
 
   useEffect(() => {
     if (!credentials) return;
-
     let script: HTMLScriptElement | null = null;
-
     const initPerfectCorpSDK = async () => {
       try {
         if (!window.YMK) {
           script = document.createElement('script');
           script.src = "https://yce-web-sdk.perfectcorp.com/sdk/v1/ycsdk.js"; 
           script.async = true;
-          
           await new Promise((resolve, reject) => {
             script!.onload = resolve;
-            script!.onerror = () => reject(new Error("Error de conexión con el servidor de análisis biométrico."));
+            script!.onerror = () => reject(new Error("Error de conexión."));
             document.body.appendChild(script!);
           });
         }
-
         if (window.YMK && containerRef.current) {
           await window.YMK.init({
             container: containerRef.current,
@@ -98,14 +92,9 @@ const AestheticSimulator: React.FC<AestheticSimulatorProps> = ({ imageSrc, onBac
             language: 'es',
             region: 'EU', 
           });
-
-          if (window.YMK.source && imageSrc) {
-             window.YMK.source.set(imageSrc);
-          }
-          
+          if (window.YMK.source && imageSrc) window.YMK.source.set(imageSrc);
           window.YMK.open();
           setLoading(false);
-          // Auto-reveal analysis after a short delay
           setTimeout(() => setShowAnalysis(true), 2500);
         }
       } catch (err: any) {
@@ -113,13 +102,9 @@ const AestheticSimulator: React.FC<AestheticSimulatorProps> = ({ imageSrc, onBac
         setLoading(false);
       }
     };
-
     initPerfectCorpSDK();
-
     return () => {
-      if (script && document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
+      if (script && document.body.contains(script)) document.body.removeChild(script);
     };
   }, [imageSrc, credentials]);
 
@@ -147,14 +132,9 @@ const AestheticSimulator: React.FC<AestheticSimulatorProps> = ({ imageSrc, onBac
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
-            
-            {/* 1. CONTENEDOR SDK (VISUALIZADOR PRINCIPAL) */}
             <div className="lg:w-2/3 bg-[#121418] rounded-[3rem] overflow-hidden border border-white/5 shadow-3xl relative min-h-[600px] lg:min-h-[800px]">
-                
-                {/* OVERLAY DE ANÁLISIS MANDIBULAR (Visual Cues) */}
                 {showAnalysis && !loading && (
                     <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
-                        {/* Vector de Tensión Mandibular */}
                         <svg className="absolute inset-0 w-full h-full opacity-60">
                             <defs>
                                 <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -165,11 +145,8 @@ const AestheticSimulator: React.FC<AestheticSimulatorProps> = ({ imageSrc, onBac
                             </defs>
                             <path d="M 30,70 Q 50,95 70,70" stroke="url(#glow)" strokeWidth="2" fill="none" strokeDasharray="10,5" className="animate-[dash_5s_linear_infinite]" transform="scale(1.5)" />
                         </svg>
-
-                        {/* Hotspots en la mandíbula */}
                         <div className="absolute top-[65%] left-[30%] w-32 h-[1px] bg-indigo-500/50 animate-pulse origin-left rotate-45"></div>
                         <div className="absolute top-[65%] right-[30%] w-32 h-[1px] bg-indigo-500/50 animate-pulse origin-right -rotate-45"></div>
-                        
                         <div className="absolute top-[62%] left-[28%] bg-indigo-600 p-1.5 rounded-full border-2 border-white shadow-xl animate-bounce"></div>
                         <div className="absolute top-[62%] right-[28%] bg-indigo-600 p-1.5 rounded-full border-2 border-white shadow-xl animate-bounce"></div>
                     </div>
@@ -218,41 +195,54 @@ const AestheticSimulator: React.FC<AestheticSimulatorProps> = ({ imageSrc, onBac
                 <div ref={containerRef} className="w-full h-full min-h-[600px] flex-grow"></div>
             </div>
 
-            {/* 2. PANEL DE HALLAZGOS Y RECOMENDACIONES (DERECHA) */}
             <div className={`lg:w-1/3 space-y-8 transition-all duration-700 ${showAnalysis ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-12'}`}>
-                
-                {/* Métrica de Jawline */}
                 <div className="bg-[#1a1c22] rounded-[2.5rem] p-10 border border-white/5 shadow-2xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-colors"></div>
                     <h3 className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.5em] mb-10 pb-4 border-b border-white/5">Reporte de Definición Mandibular</h3>
                     
-                    <div className="space-y-8">
+                    <div className="space-y-10">
                         {JawlineMetrics.map((m, idx) => (
-                            <div key={idx} className="relative">
+                            <div key={idx} className="relative group/metric">
                                 <div className="flex justify-between items-end mb-3">
-                                    <span className="text-[11px] font-bold text-white uppercase tracking-wider">{m.label}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[11px] font-bold text-white uppercase tracking-wider">{m.label}</span>
+                                        <div className="w-3.5 h-3.5 rounded-full border border-white/20 flex items-center justify-center text-[8px] text-white/40 group-hover/metric:border-amber-500 group-hover/metric:text-amber-500 transition-colors cursor-help">i</div>
+                                    </div>
                                     <span className={`text-[9px] font-mono px-2 py-0.5 rounded ${m.status === 'Ideal' ? 'text-green-400 bg-green-400/10' : 'text-amber-400 bg-amber-400/10'}`}>{m.status}</span>
                                 </div>
-                                <div className="text-[12px] text-indigo-300 font-mono mb-2">{m.value}</div>
-                                <p className="text-[10px] text-slate-500 font-light leading-relaxed">{m.desc}</p>
+                                <div className="text-[14px] text-indigo-300 font-mono mb-2">{m.value}</div>
+                                
+                                {/* Floating Tooltip for Metric */}
+                                <div className="absolute left-0 bottom-full mb-4 w-64 bg-[#050608]/95 backdrop-blur-xl border border-amber-500/40 p-5 rounded-2xl shadow-2xl opacity-0 group-hover/metric:opacity-100 transition-all pointer-events-none z-50 transform translate-y-2 group-hover/metric:translate-y-0">
+                                    <div className="text-amber-500 text-[9px] font-black tracking-[0.2em] uppercase mb-2">Relevancia Clínica</div>
+                                    <p className="text-[10px] text-white/80 font-light leading-relaxed uppercase tracking-wider italic">{m.desc}</p>
+                                    <div className="absolute -bottom-2 left-4 w-4 h-4 bg-[#050608] border-b border-r border-amber-500/40 rotate-45"></div>
+                                </div>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Plan de Tratamiento Sugerido */}
                 <div className="bg-gradient-to-br from-indigo-900/40 to-black rounded-[2.5rem] p-10 border border-indigo-500/20 shadow-2xl">
                     <h3 className="text-white text-xs font-black uppercase tracking-[0.4em] mb-10">Propuesta de Armonización</h3>
                     <div className="space-y-6">
                         {JawlineTreatments.map((t, idx) => (
-                            <div key={idx} className="flex items-start gap-5 p-5 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all cursor-pointer group">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-600/20 flex items-center justify-center text-indigo-400 font-black border border-indigo-500/30 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                            <div key={idx} className="flex items-start gap-5 p-5 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all cursor-pointer group/treat relative">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-600/20 flex items-center justify-center text-indigo-400 font-black border border-indigo-500/30 group-hover/treat:bg-indigo-600 group-hover/treat:text-white transition-colors">
                                     {idx + 1}
                                 </div>
-                                <div>
+                                <div className="flex-grow">
                                     <h4 className="text-white text-[11px] font-bold uppercase mb-1">{t.name}</h4>
-                                    <p className="text-[9px] text-indigo-300 uppercase font-mono tracking-widest mb-1">{t.tech}</p>
-                                    <p className="text-[10px] text-slate-500 font-light italic">{t.goal}</p>
+                                    <p className="text-[9px] text-indigo-300 uppercase font-mono tracking-widest">{t.tech}</p>
+                                </div>
+
+                                {/* Floating Tooltip for Treatment */}
+                                <div className="absolute right-full mr-6 top-1/2 -translate-y-1/2 w-64 bg-indigo-950/90 backdrop-blur-2xl border border-indigo-400/30 p-6 rounded-[2rem] shadow-3xl opacity-0 group-hover/treat:opacity-100 transition-all pointer-events-none z-50 transform translate-x-4 group-hover/treat:translate-x-0">
+                                    <div className="text-indigo-400 text-[9px] font-black tracking-[0.2em] uppercase mb-3 flex items-center gap-2">
+                                        <span className="w-2 h-[1px] bg-indigo-400"></span> Objetivo Estético
+                                    </div>
+                                    <p className="text-[10px] text-slate-200 font-light leading-relaxed uppercase tracking-widest">{t.goal}</p>
+                                    <div className="absolute top-1/2 -right-2 -translate-y-1/2 w-4 h-4 bg-indigo-950/90 border-t border-r border-indigo-400/30 rotate-45"></div>
                                 </div>
                             </div>
                         ))}

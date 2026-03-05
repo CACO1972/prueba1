@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import Button from './Button';
 import Spinner from './Spinner';
 import BeforeAfterSlider from './BeforeAfterSlider';
 import ReportView from './ReportView';
+import ContactForm from './ContactForm';
 import { AppStep } from '../App';
 
-const FLOW_PAYMENT_URL = "https://www.flow.cl/btn.php?token=afdffb24cc8cef3f65a6cb7f0aec8a9373efedf8"; 
+const FLOW_PAYMENT_URL = "https://www.flow.cl/btn.php?token=afdffb24cc8cef3f65a6cb7f0aec8a9373efedf8";
 
 interface ImageProcessorProps {
   step: AppStep;
@@ -14,7 +16,7 @@ interface ImageProcessorProps {
   generatedImage: string | null;
   hasPaid: boolean;
   onSimulationComplete: (original: string, generated: string) => void;
-  onStartAesthetic: () => void;
+  onFormComplete: () => void;
   onOpenMarketing: () => void;
   onReset: () => void;
 }
@@ -24,24 +26,91 @@ const ImageProcessor: React.FC<ImageProcessorProps> = ({
   generatedImage, 
   hasPaid,
   onSimulationComplete,
+  onFormComplete,
   onOpenMarketing,
   onReset 
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [capturedPreview, setCapturedPreview] = useState<string | null>(null);
+  const [expertAnalysis, setExpertAnalysis] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paymentVerified, setPaymentVerified] = useState(false);
   
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    return () => stopCamera();
+  }, []);
+
+  const startCamera = async () => {
+    try {
+      setError(null);
+      const constraints = { 
+        video: { 
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false 
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.setAttribute("playsinline", "true");
+        videoRef.current.muted = true;
+        
+        videoRef.current.onloadedmetadata = async () => {
+          try {
+            await videoRef.current?.play();
+            setShowCamera(true);
+          } catch (e) {
+            setError("Toca la pantalla para activar la cámara.");
+          }
+        };
+      }
+    } catch (err: any) {
+      setError("No se pudo acceder a la cámara. Revisa los permisos.");
+      setShowCamera(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setShowCamera(false);
+  };
+
+  const takePhoto = () => {
+    if (videoRef.current && videoRef.current.readyState === 4) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(videoRef.current, 0, 0);
+        setCapturedPreview(canvas.toDataURL('image/jpeg', 0.9));
+        stopCamera();
+      }
+    }
+  };
+
   const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      setCapturedPreview(base64);
-    };
+    reader.onload = (event) => setCapturedPreview(event.target?.result as string);
     reader.readAsDataURL(file);
-    e.target.value = "";
   };
 
   const generateSmile = async () => {
@@ -51,16 +120,17 @@ const ImageProcessor: React.FC<ImageProcessorProps> = ({
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const cleanBase64 = capturedPreview.split(',')[1];
+        
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: {
                 parts: [
                     { inlineData: { data: cleanBase64, mimeType: 'image/jpeg' } },
-                    { text: "Create a photorealistic dental smile reconstruction. Apply high-end aesthetic white porcelain veneers with perfect alignment and natural translucency. Maintain facial features, eyes, and skin texture exactly as the original. Only modify the dental area to show a celebrity-grade smile. Return ONLY the modified image." }
+                    { text: "DENTAL CLINICAL SIMULATION: Perform a professional dental restoration. Detect the teeth. Replace them with ultra-realistic, natural-white (Bleach 2 tone), symmetrical porcelain veneers. The smile must follow the lower lip curvature. Keep facial skin texture, lighting, and expression IDENTICAL. Focus on cinematic dental quality. Return ONLY the edited image." }
                 ]
             }
         });
-
+        
         let generatedUrl = null;
         if (response.candidates?.[0]?.content?.parts) {
             for (const part of response.candidates[0].content.parts) {
@@ -70,148 +140,167 @@ const ImageProcessor: React.FC<ImageProcessorProps> = ({
                 }
             }
         }
+
         if (generatedUrl) {
             onSimulationComplete(capturedPreview, generatedUrl);
         } else {
-            throw new Error("Mapeo facial insuficiente.");
+            throw new Error("Procesamiento fallido. Intenta con una foto frontal más clara.");
         }
-    } catch (err) {
-        console.error("AI Error:", err);
-        setError("Error de procesamiento. Asegúrate de que la foto sea de frente, con buena luz y boca visible.");
+    } catch (err: any) {
+        setError("Error en la IA. Revisa tu conexión.");
+    } finally {
+        setIsAnalyzing(false);
+    }
+  };
+
+  const analyzeImage = async () => {
+    if (!originalImage) return;
+    setIsAnalyzing(true);
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: {
+                parts: [
+                    { inlineData: { data: originalImage.split(',')[1], mimeType: 'image/jpeg' } },
+                    { text: "Eres un odontólogo experto en estética. Analiza esta foto. Entrega un diagnóstico rápido (máximo 100 palabras) sobre la línea media, el arco de sonrisa y la armonía general. Usa un tono clínico de alta gama." }
+                ]
+            }
+        });
+        setExpertAnalysis(response.text);
+    } catch (e) {
+        setError("Análisis no disponible en este momento.");
     } finally {
         setIsAnalyzing(false);
     }
   };
 
   if (isAnalyzing) return <Spinner imageSrc={capturedPreview || originalImage} />;
-
+  
   if (hasPaid && originalImage && generatedImage) {
       return <ReportView originalImage={originalImage} generatedImage={generatedImage} onReset={onReset} />;
   }
 
   return (
-    <div className="flex flex-col items-center w-full max-w-5xl mx-auto pb-24 px-4">
+    <div className="flex flex-col items-center w-full max-w-7xl mx-auto pb-32 px-6">
       {error && (
-        <div className="mb-8 bg-red-500/10 border border-red-500/20 px-6 py-4 rounded-2xl text-red-400 text-[10px] font-black uppercase tracking-widest w-full max-w-xl text-center flex items-center justify-center gap-3">
-            <span className="text-sm">⚠️</span> {error}
+        <div className="mb-8 bg-red-500/10 border border-red-500/20 px-8 py-4 rounded-full text-red-400 text-[10px] font-black uppercase tracking-widest w-full max-w-md text-center backdrop-blur-xl animate-fade-in shadow-lg">
+            ⚠️ {error}
         </div>
       )}
 
-      {!capturedPreview && !originalImage && (
-        <div className="w-full max-w-xl p-12 md:p-16 bg-[#121418] rounded-[3.5rem] border border-white/5 text-center shadow-3xl relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.05),transparent)] pointer-events-none"></div>
-            
-            <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-10 border border-amber-500/20 relative">
-                <div className="absolute inset-0 rounded-full border border-amber-500/20 animate-ping opacity-20"></div>
-                <svg className="w-10 h-10 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <circle cx="12" cy="13" r="3" strokeWidth={1.2} />
-                </svg>
+      {showCamera && (
+        <div className="fixed inset-0 z-[60] bg-[#050608] flex flex-col items-center justify-center animate-fade-in">
+            <div className="relative w-full h-full max-w-lg md:h-[85vh] bg-black md:rounded-[4rem] overflow-hidden shadow-2xl">
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" style={{ transform: 'scaleX(-1)' }} />
+                <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+                    <div className="w-[75%] h-[55%] border-2 border-amber-500/20 rounded-[10rem] shadow-[0_0_0_9999px_rgba(5,6,8,0.7)]"></div>
+                </div>
+                <div className="absolute bottom-16 inset-x-0 flex flex-col items-center gap-10">
+                    <button onClick={takePhoto} className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-transform">
+                        <div className="w-20 h-20 rounded-full border-2 border-slate-900/10"></div>
+                    </button>
+                    <button onClick={stopCamera} className="text-white/40 text-[10px] font-black uppercase tracking-widest">Cerrar</button>
+                </div>
             </div>
-            
-            <h2 className="text-4xl font-light text-white mb-6 tracking-tight">Análisis <span className="text-amber-500 font-bold italic">Symmetry v4</span></h2>
-            <p className="text-slate-500 mb-12 font-light text-sm max-w-xs mx-auto uppercase tracking-[0.2em] leading-relaxed">
-                Captura tu rostro de frente para un diagnóstico biométrico de precisión.
-            </p>
+        </div>
+      )}
 
-            <div className="flex flex-col gap-4">
-                <input 
-                    id="cameraInput" type="file" accept="image/*" capture="user"
-                    className="hidden" onChange={handleFilePicked}
-                />
-                <input 
-                    id="galleryInput" type="file" accept="image/*"
-                    className="hidden" onChange={handleFilePicked}
-                />
-
-                <label 
-                  htmlFor="cameraInput" 
-                  className="cursor-pointer bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black py-6 rounded-2xl text-[11px] uppercase tracking-[0.3em] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><circle cx="12" cy="13" r="3" strokeWidth={2} /></svg>
-                    TOMAR IMAGEN FRAME PRO
-                </label>
-
-                <label 
-                  htmlFor="galleryInput" 
-                  className="cursor-pointer bg-white/5 border border-white/10 text-slate-400 font-black py-5 rounded-2xl text-[11px] uppercase tracking-[0.3em] hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-3"
-                >
-                    Subir desde Galería
+      {!capturedPreview && !originalImage && !showCamera && (
+        <div className="w-full max-w-2xl p-12 md:p-24 bg-[#0f1115] rounded-[3.5rem] border border-white/5 text-center shadow-3xl animate-fade-in-up">
+            <div className="w-24 h-24 bg-amber-500/10 rounded-[2rem] flex items-center justify-center mx-auto mb-12 border border-amber-500/20">
+                <svg className="w-10 h-10 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-light text-white mb-6 tracking-tighter italic uppercase">Análisis de <span className="text-amber-500 font-bold not-italic">Simetría</span></h2>
+            <p className="text-slate-500 text-sm mb-12 uppercase tracking-[0.2em]">Inicia tu transformación dental con estándares de Clínica Miró.</p>
+            <div className="flex flex-col gap-6 max-w-sm mx-auto">
+                <Button onClick={startCamera} className="w-full py-8">USAR CÁMARA LIVE</Button>
+                <label className="cursor-pointer bg-white/5 border border-white/10 text-slate-400 font-black py-6 rounded-full text-[10px] uppercase tracking-widest text-center hover:bg-white/10 transition-colors">
+                  <input type="file" accept="image/*" className="hidden" onChange={handleFilePicked} />
+                  CARGAR ARCHIVO
                 </label>
             </div>
         </div>
       )}
 
       {capturedPreview && !generatedImage && (
-          <div className="w-full max-w-xl bg-[#121418] rounded-[3.5rem] overflow-hidden border border-white/5 shadow-3xl animate-fade-in-up">
-              <div className="relative">
-                <img src={capturedPreview} alt="Preview" className="w-full h-[60vh] object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#121418] via-transparent to-transparent"></div>
-                {/* Visual Corners */}
-                <div className="absolute top-8 left-8 w-12 h-12 border-t-2 border-l-2 border-amber-500/40 rounded-tl-2xl"></div>
-                <div className="absolute top-8 right-8 w-12 h-12 border-t-2 border-r-2 border-amber-500/40 rounded-tr-2xl"></div>
-                <div className="absolute bottom-8 left-8 w-12 h-12 border-b-2 border-l-2 border-amber-500/40 rounded-bl-2xl"></div>
-                <div className="absolute bottom-8 right-8 w-12 h-12 border-b-2 border-r-2 border-amber-500/40 rounded-br-2xl"></div>
-              </div>
-              <div className="p-12 text-center">
-                  <h3 className="text-white text-xl font-light mb-10 uppercase tracking-[0.3em]">Análisis Biométrico <span className="font-bold text-amber-500">Confirmado</span></h3>
-                  <div className="flex flex-col gap-5">
-                      <Button onClick={generateSmile} className="w-full py-6 text-[12px] font-black uppercase tracking-[0.2em] shadow-amber-500/20 shadow-2xl">
-                          INICIAR SINCRONIZACIÓN IA
-                      </Button>
-                      <button onClick={() => setCapturedPreview(null)} className="text-slate-600 text-[9px] font-black uppercase tracking-[0.5em] hover:text-white transition-colors">
-                          ← Volver a capturar
-                      </button>
-                  </div>
+          <div className="w-full max-w-xl bg-[#0f1115] rounded-[4rem] overflow-hidden border border-white/5 shadow-3xl animate-fade-in-up">
+              <img src={capturedPreview} className="w-full aspect-[4/5] object-cover" alt="Preview" />
+              <div className="p-16 text-center">
+                  <h3 className="text-white text-2xl font-light mb-12 uppercase tracking-widest italic">¿Procesar <span className="font-bold text-amber-500 not-italic">Caso Clínico</span>?</h3>
+                  <Button onClick={generateSmile} className="w-full py-8">SINTETIZAR RESULTADO</Button>
+                  <button onClick={() => setCapturedPreview(null)} className="mt-8 text-slate-600 text-[10px] font-black uppercase tracking-widest">TOMAR OTRA FOTO</button>
               </div>
           </div>
       )}
 
       {originalImage && generatedImage && !hasPaid && (
-        <div className="w-full flex flex-col items-center">
-          <div className="text-center mb-16 animate-fade-in">
-              <h2 className="text-5xl font-light text-white tracking-tighter uppercase mb-4 italic">Simetría <span className="font-bold text-amber-500">Perfecta</span></h2>
-              <div className="flex flex-wrap justify-center gap-4">
-                <p className="text-slate-500 text-[10px] tracking-[0.5em] uppercase font-black">Diagnóstico v4.0 Elite</p>
-                <button 
-                    onClick={onOpenMarketing}
-                    className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 px-4 py-1.5 rounded-full text-[9px] font-black text-amber-500 uppercase tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all"
-                >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                    Ver Tour 360 Marketing
-                </button>
-              </div>
-          </div>
-
-          <div className="w-full mb-20 animate-fade-in">
-             <BeforeAfterSlider before={originalImage} after={generatedImage} />
-          </div>
-
-          <div className="w-full max-w-3xl bg-gradient-to-br from-[#1a1c22] to-black rounded-[4rem] border border-amber-500/20 p-12 md:p-20 text-center shadow-3xl relative overflow-hidden">
-              <div className="absolute -top-20 -right-20 w-64 h-64 bg-amber-500/5 blur-[100px]"></div>
-              <h3 className="text-3xl text-white font-light mb-12 tracking-widest">OBTENER <span className="text-amber-500 font-bold uppercase">Informe Completo</span></h3>
+        <div className="w-full flex flex-col items-center animate-fade-in">
+          {/* PAYWALL SECTION */}
+          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               
-              <div className="bg-white/5 rounded-[2.5rem] p-10 mb-14 text-left space-y-6 border border-white/5">
-                  <p className="text-white text-[10px] font-black uppercase tracking-[0.4em] border-b border-white/10 pb-4">Desbloqueas hoy:</p>
-                  <ul className="text-slate-400 text-sm space-y-5 font-light">
-                      <li className="flex gap-4 items-center"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Mapa Orofacial Interactivo con IA</li>
-                      <li className="flex gap-4 items-center"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Guía Dental de Vanguardia 2024</li>
-                      <li className="flex gap-4 items-center"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Cupón de Cortesía 10% Tratamientos</li>
-                  </ul>
+              {/* Visual Preview Blocker */}
+              <div className="relative rounded-[4rem] overflow-hidden border border-white/5 shadow-3xl bg-black">
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-xl p-12 text-center">
+                      <div className="w-20 h-20 bg-amber-500 rounded-full flex items-center justify-center mb-8 shadow-[0_0_50px_rgba(245,158,11,0.5)]">
+                          <svg className="w-8 h-8 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                      </div>
+                      <h3 className="text-white text-3xl font-black uppercase tracking-widest leading-none mb-4">INFORME BLOQUEADO</h3>
+                      <p className="text-amber-500 text-[10px] font-black uppercase tracking-[0.5em] mb-12">TRANSFORMACIÓN DISPONIBLE AL 100%</p>
+                      
+                      <div className="w-full space-y-4 text-left">
+                          {[
+                              "Simulación de Alta Definición 4K",
+                              "Análisis Biométrico de Proporción",
+                              "Guía de Materiales (Zirconio/Emax)",
+                              "Plan de Armonización Personalizado",
+                              "Certificado de Excelencia Miró"
+                          ].map((item, i) => (
+                              <div key={i} className="flex items-center gap-4 text-[11px] text-white/70 font-bold uppercase tracking-widest border-b border-white/5 pb-2">
+                                  <span className="text-amber-500">✓</span> {item}
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+                  <div className="opacity-40 grayscale pointer-events-none">
+                     <BeforeAfterSlider before={originalImage} after={generatedImage} />
+                  </div>
               </div>
 
-              <div className="mb-14">
-                  <span className="text-7xl font-black text-white tracking-tighter">$5.900 <span className="text-2xl text-amber-500 font-bold ml-2">CLP</span></span>
-              </div>
+              {/* Payment Action Area */}
+              <div className="p-12 md:p-20 bg-[#0f1115] rounded-[4rem] border border-white/10 shadow-3xl text-center lg:text-left">
+                  <span className="text-amber-500 text-[10px] font-black uppercase tracking-[0.8em] block mb-6">ACCESO EXCLUSIVO ELITE</span>
+                  <h2 className="text-5xl md:text-7xl font-light text-white mb-10 leading-none tracking-tighter">Desbloquea tu <br/><span className="font-bold italic text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-amber-200">Nueva Realidad.</span></h2>
+                  
+                  <div className="bg-white/5 p-10 rounded-3xl border border-white/5 mb-12">
+                      <div className="flex justify-between items-end mb-4">
+                          <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Valor Único</span>
+                          <span className="text-4xl font-black text-white">$5.900 <span className="text-xs text-amber-500">CLP</span></span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 uppercase font-bold tracking-widest leading-relaxed">Incluye simulación completa y reporte descargable en PDF de grado clínico.</p>
+                  </div>
 
-              <a 
-                  href={FLOW_PAYMENT_URL} 
-                  className="block w-full bg-amber-500 text-slate-950 font-black text-[14px] py-7 rounded-3xl shadow-[0_25px_60px_rgba(245,158,11,0.2)] hover:scale-[1.03] transition-all uppercase tracking-[0.3em]"
-              >
-                  GENERAR INFORME + CUPÓN
-              </a>
-              <p className="mt-8 text-[9px] text-slate-600 uppercase tracking-widest font-bold">Pago Seguro vía Flow Redirección Encriptada</p>
+                  <a 
+                    href={FLOW_PAYMENT_URL} 
+                    onClick={() => setPaymentVerified(true)} 
+                    className="block w-full bg-amber-500 text-slate-950 font-black py-10 rounded-full text-[14px] uppercase tracking-[0.6em] text-center shadow-[0_25px_60px_rgba(245,158,11,0.3)] hover:scale-[1.02] active:scale-95 transition-all"
+                  >
+                    COMPRAR ACCESO TOTAL
+                  </a>
+                  
+                  <div className="mt-12 opacity-50 flex items-center justify-center lg:justify-start gap-8 grayscale contrast-125">
+                      <img src="https://mirousa.com/wp-content/uploads/2022/10/logo-miro-vertical.png" className="h-10 object-contain" alt="Miró" />
+                      <div className="text-[9px] text-white font-black tracking-widest border-l border-white/20 pl-8">SECURE ENCRYPTION 256-BIT</div>
+                  </div>
+              </div>
           </div>
+
+          {/* Verification Area (Post-Click) */}
+          {paymentVerified && (
+            <div className="w-full max-w-6xl mt-20 animate-fade-in-up">
+                 <ContactForm onDownload={onFormComplete} title="VALIDACIÓN DE PAGO" subtitle="Ingresa tus datos para recibir el Informe Certificado" buttonText="GENERAR MI INFORME AHORA" />
+            </div>
+          )}
         </div>
       )}
     </div>

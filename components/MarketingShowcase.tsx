@@ -1,122 +1,127 @@
+
 import React, { useState, useEffect } from 'react';
 import Button from './Button';
 
 interface MarketingShowcaseProps {
-  originalImage: string;
-  generatedImage: string;
   onClose: () => void;
+  isDemo?: boolean;
 }
 
-const MarketingShowcase: React.FC<MarketingShowcaseProps> = ({ originalImage, generatedImage, onClose }) => {
-  const [phase, setPhase] = useState<'scan' | 'reveal' | 'detail'>('scan');
-  const [showGoldRatio, setShowGoldRatio] = useState(false);
+const MarketingShowcase: React.FC<MarketingShowcaseProps> = ({ onClose, isDemo = false }) => {
+  const [phase, setPhase] = useState(0); 
+  const [progress, setProgress] = useState(0);
+
+  // Imágenes coherentes de un mismo sujeto para la demostración
+  const images = [
+    "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1000&auto=format&fit=crop", // Base
+    "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1000&auto=format&fit=crop", // Escaneo
+    "https://images.unsplash.com/photo-1595567021422-2255b05d209c?q=80&w=1000&auto=format&fit=crop", // Resultado Proceso
+    "https://images.unsplash.com/photo-1595567021422-2255b05d209c?q=80&w=1000&auto=format&fit=crop"  // Resultado Final
+  ];
+
+  const phases = [
+    { title: "ESTUDIO BASE", tag: "REGISTRO_BIO", desc: "CAPTURA DE FACCIONES Y ESTRUCTURA ÓSEA ACTUAL." },
+    { title: "ESCANEO IA", tag: "SIMETRÍA_SCAN", desc: "DETECTANDO TERCIOS FACIALES Y ARCO DENTAL." },
+    { title: "SÍNTESIS DIGITAL", tag: "IA_RENDERING", desc: "DISEÑANDO CARILLAS DE PORCELANA A MEDIDA." },
+    { title: "SONRISA ELITE", tag: "TRANSFORMACIÓN", desc: "SIMULACIÓN FINALIZADA CON ÉXITO CLÍNICO." }
+  ];
 
   useEffect(() => {
-    const sequence = async () => {
-      setPhase('scan');
-      await new Promise(r => setTimeout(r, 2500));
-      setPhase('reveal');
-      await new Promise(r => setTimeout(r, 2000));
-      setShowGoldRatio(true);
-      setPhase('detail');
-    };
-    sequence();
-  }, []);
+    const timer = setInterval(() => {
+        setProgress(p => {
+            if (p >= 100) {
+                if (phase < phases.length - 1) {
+                    setPhase(prev => prev + 1);
+                    return 0;
+                } else {
+                    setTimeout(() => setPhase(0), 3000);
+                    return 100;
+                }
+            }
+            return p + 2.5;
+        });
+    }, 50);
+    return () => clearInterval(timer);
+  }, [phase]);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-0 md:p-10 animate-fade-in overflow-hidden">
+    <div className="fixed inset-0 z-[100] bg-[#050608] flex flex-col items-center justify-center animate-fade-in overflow-hidden">
         
-        {/* Background Ambient Particles */}
-        <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.05)_0%,transparent_70%)]"></div>
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-        </div>
-
-        {/* Cinematic Viewport */}
-        <div className="relative w-full max-w-5xl aspect-[9/16] md:aspect-video bg-[#0a0a0a] rounded-none md:rounded-[4rem] shadow-[0_0_150px_rgba(0,0,0,1)] border border-white/5 overflow-hidden flex items-center justify-center">
+        <div className="relative w-full h-[100dvh] md:h-[92vh] max-w-lg bg-black md:rounded-[4rem] border border-white/5 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(0,0,0,1)]">
             
-            {/* The Image Layer with Parallax-Zoom */}
-            <div className={`relative w-full h-full transition-transform duration-[10000ms] ease-out scale-100 ${phase !== 'scan' ? 'scale-110 translate-y-[-2%]' : ''}`}>
+            <div className="absolute top-0 left-0 w-full z-50 p-10 flex justify-between items-start bg-gradient-to-b from-black/90 to-transparent">
+                <div className="flex flex-col">
+                    <span className="text-[10px] text-white/40 font-black tracking-widest uppercase">CASE_DEMO_01</span>
+                    <span className="text-[11px] text-amber-500 font-light tracking-widest uppercase">{phases[phase].tag}</span>
+                </div>
+                <div className="bg-amber-500/10 border border-amber-500/20 px-4 py-2 rounded-full">
+                    <span className="text-amber-500 text-[9px] font-black uppercase tracking-widest">LIVE IA</span>
+                </div>
+            </div>
+
+            <div className="relative flex-grow flex items-center justify-center overflow-hidden">
                 <img 
-                    src={phase === 'scan' ? originalImage : generatedImage} 
-                    alt="Transformation" 
-                    className="w-full h-full object-cover grayscale-[30%] brightness-[0.8] contrast-[1.1]"
+                    src={images[phase]} 
+                    className={`w-full h-full object-cover transition-all duration-1000 ${phase === 1 ? 'brightness-50 grayscale-[50%]' : ''}`}
+                    alt="Dental Showcase"
                 />
-                
-                {/* Golden Ratio Overlay */}
-                {showGoldRatio && (
-                    <div className="absolute inset-0 z-20 opacity-40 mix-blend-screen animate-fade-in">
-                        <svg className="w-full h-full text-amber-500/50" viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <path d="M0,0 Q100,0 100,100" fill="none" stroke="currentColor" strokeWidth="0.1" />
-                            <path d="M100,100 Q0,100 0,0" fill="none" stroke="currentColor" strokeWidth="0.1" />
-                            <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" strokeWidth="0.1" strokeDasharray="1,1" />
-                            <line x1="50" y1="0" x2="50" y2="100" stroke="currentColor" strokeWidth="0.05" />
-                        </svg>
+
+                {phase === 1 && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center">
+                        <div className="w-full h-1 bg-amber-500/80 shadow-[0_0_30px_rgba(245,158,11,1)] animate-[scan_2.5s_linear_infinite] absolute top-0"></div>
+                        <div className="w-[70%] h-[55%] border-2 border-amber-500/30 rounded-[10rem] relative">
+                             <div className="absolute top-1/2 left-0 w-full h-[1px] bg-white/10"></div>
+                             <div className="absolute top-0 left-1/2 w-[1px] h-full bg-white/10"></div>
+                             <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-4 h-4 border border-amber-500 rounded-full animate-ping"></div>
+                        </div>
+                    </div>
+                )}
+
+                {phase === 3 && (
+                    <div className="absolute inset-0 z-20 bg-amber-500/5 backdrop-blur-[1px] flex items-center justify-center animate-fade-in">
+                         <div className="px-10 py-4 bg-amber-500 text-slate-950 font-black text-xs uppercase tracking-[0.8em] shadow-2xl">OPTIMIZADO</div>
                     </div>
                 )}
             </div>
 
-            {/* Scanning Laser Line */}
-            {phase === 'scan' && (
-                <div className="absolute top-0 left-0 w-full h-1 bg-amber-500 shadow-[0_0_40px_rgba(245,158,11,1)] z-30 animate-[scan-marketing_2s_ease-in-out_infinite]"></div>
-            )}
-
-            {/* Floating Detail Tags */}
-            <div className={`absolute inset-0 z-40 transition-opacity duration-1000 ${phase === 'detail' ? 'opacity-100' : 'opacity-0'}`}>
-                {/* Tag 1: Blanco Elite */}
-                <div className="absolute top-[55%] left-[45%] animate-[float-tag_4s_ease-in-out_infinite]">
-                    <div className="bg-white/10 backdrop-blur-xl border-l-2 border-amber-500 p-4 rounded-r-2xl shadow-2xl">
-                        <span className="block text-[8px] font-black text-amber-500 tracking-[0.4em] uppercase mb-1">Textura</span>
-                        <span className="text-white text-[11px] font-bold tracking-widest uppercase">Esmalte Vitrificado</span>
-                    </div>
-                </div>
-
-                {/* Tag 2: Simetría */}
-                <div className="absolute top-[45%] right-[20%] animate-[float-tag_5s_ease-in-out_infinite_1s]">
-                    <div className="bg-white/10 backdrop-blur-xl border-l-2 border-amber-500 p-4 rounded-r-2xl shadow-2xl">
-                        <span className="block text-[8px] font-black text-amber-500 tracking-[0.4em] uppercase mb-1">Alineación</span>
-                        <span className="text-white text-[11px] font-bold tracking-widest uppercase">Proporción Áurea</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Narrative Overlays */}
-            <div className="absolute bottom-20 left-10 z-50 max-w-sm pointer-events-none">
-                <div className="overflow-hidden">
-                    <h2 className={`text-4xl md:text-6xl font-black text-white italic tracking-tighter transition-transform duration-700 ${phase === 'reveal' ? 'translate-y-0' : 'translate-y-full'}`}>
-                        ELITE <span className="text-amber-500">SMILE</span>
+            <div className="p-10 pb-16 space-y-10 bg-gradient-to-t from-black via-black/95 to-transparent relative z-30">
+                <div className="text-center space-y-4">
+                    <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase leading-none">
+                        {phases[phase].title}
                     </h2>
+                    <p className="text-[10px] text-slate-400 font-light uppercase tracking-widest leading-relaxed max-w-xs mx-auto">
+                        {phases[phase].desc}
+                    </p>
                 </div>
-                <p className={`text-slate-400 text-[10px] uppercase tracking-[0.5em] mt-4 transition-all duration-1000 delay-500 ${phase === 'detail' ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}>
-                    Ingeniería de Simetría Facial Aplicada
-                </p>
-            </div>
 
-            {/* UI Controls */}
-            <div className="absolute top-8 right-8 z-50">
-                <button 
-                    onClick={onClose}
-                    className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-md border border-white/10 transition-all"
-                >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-            </div>
-        </div>
+                <div className="space-y-4">
+                    <div className="flex justify-between text-[9px] text-amber-500 font-black tracking-widest uppercase">
+                        <span>PROCESANDO_NODOS</span>
+                        <span>{Math.round(progress)}%</span>
+                    </div>
+                    <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden">
+                        <div 
+                            className="h-full bg-amber-500 transition-all duration-100 shadow-[0_0_20px_rgba(245,158,11,0.6)]" 
+                            style={{ width: `${progress}%` }}
+                        ></div>
+                    </div>
+                </div>
 
-        {/* Marketing Call to Action */}
-        <div className={`mt-12 text-center transition-all duration-1000 delay-1000 ${phase === 'detail' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.5em] mb-6">Esta es tu mejor versión.</p>
-            <Button onClick={onClose} className="!px-12 !py-6 !text-[12px] shadow-amber-500/20 shadow-2xl">SOLICITAR INFORME DE BIOMETRÍA</Button>
+                <div className="pt-4 flex flex-col items-center gap-6">
+                    <Button onClick={onClose} className="w-full py-8 text-[12px] shadow-2xl shadow-amber-500/20">
+                        INICIAR MI SIMULACIÓN
+                    </Button>
+                    <button onClick={onClose} className="text-[10px] text-white/30 font-black uppercase tracking-widest hover:text-white transition-colors">SALTAR DEMO</button>
+                </div>
+            </div>
         </div>
 
         <style>{`
-            @keyframes scan-marketing {
-                0% { top: 10%; }
-                100% { top: 90%; }
-            }
-            @keyframes float-tag {
-                0%, 100% { transform: translateY(0) translateX(0); }
-                50% { transform: translateY(-15px) translateX(10px); }
+            @keyframes scan {
+                0% { top: 10%; opacity: 0; }
+                20% { opacity: 1; }
+                80% { opacity: 1; }
+                100% { top: 90%; opacity: 0; }
             }
         `}</style>
     </div>

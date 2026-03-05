@@ -1,79 +1,87 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import Button from './Button';
 
 interface HeroProps {
   onStart: () => void;
+  onOpenDemo: () => void;
 }
 
-const Hero: React.FC<HeroProps> = ({ onStart }) => {
+const Hero: React.FC<HeroProps> = ({ onStart, onOpenDemo }) => {
+  const [sliderPos, setSliderPos] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSliderPos(prev => (prev >= 100 ? 0 : prev + 0.3));
+    }, 45);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="flex-grow flex flex-col items-center justify-center text-center py-20 relative overflow-hidden min-h-[80vh]">
+    <div className="flex-grow flex flex-col items-center justify-center text-center px-6 py-10 md:py-20 relative overflow-hidden min-h-[80vh]">
       
-      {/* VIDEO BACKGROUND LAYER */}
-      <div className="absolute inset-0 overflow-hidden z-0">
-         {/* Oscurecemos el overlay para el tema dark minimalista */}
-         <div className="absolute inset-0 bg-[#0f1115]/70 z-10"></div> 
-         <video 
-            autoPlay 
-            loop 
-            muted 
-            playsInline 
-            className="w-full h-full object-cover opacity-30 grayscale-[40%]"
-            poster="https://images.unsplash.com/photo-1606811841689-230391b42b94?q=80&w=2070&auto=format&fit=crop"
-         >
-            <source src="https://assets.mixkit.co/videos/preview/mixkit-young-woman-smiling-at-camera-close-up-12726-large.mp4" type="video/mp4" />
-         </video>
+      {/* CINEMATIC BACKGROUND CON MÁS LUZ */}
+      <div className="absolute inset-0 z-0 overflow-hidden select-none pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#050608] via-transparent to-[#050608] z-10"></div>
+        <div className="absolute inset-0 bg-black/60 z-10"></div>
+        
+        <div className="relative w-full h-full opacity-60 grayscale-[30%] scale-105 transition-transform duration-[20s] ease-linear">
+             <img 
+                src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=2000&auto=format&fit=crop" 
+                className="absolute inset-0 w-full h-full object-cover" 
+                alt="Original Facial Study"
+             />
+             <div 
+                className="absolute inset-0 w-full h-full overflow-hidden border-r border-amber-500/50 shadow-[10px_0_50px_rgba(245,158,11,0.3)]"
+                style={{ width: `${sliderPos}%` }}
+             >
+                <img 
+                    src="https://images.unsplash.com/photo-1595567021422-2255b05d209c?q=80&w=2000&auto=format&fit=crop" 
+                    className="absolute inset-0 w-[100vw] h-full object-cover" 
+                    alt="AI Transformation Study"
+                />
+             </div>
+        </div>
       </div>
 
-      <div className="relative z-20 max-w-4xl mx-auto px-4">
-        <div className="mb-6">
-            <span className="inline-block py-1.5 px-4 rounded-full bg-white/5 backdrop-blur border border-white/10 text-amber-500 text-[10px] tracking-[0.2em] uppercase font-bold shadow-sm">
-            Inteligencia Artificial Biométrica
+      <div className="relative z-20 max-w-5xl mx-auto pt-4 md:pt-12 flex flex-col items-center">
+        <div className="mb-10 animate-fade-in-down">
+            <span className="inline-flex items-center gap-3 py-3.5 px-10 rounded-full bg-white/5 backdrop-blur-3xl border border-white/10 text-amber-500 text-[10px] tracking-[0.6em] uppercase font-black shadow-[0_0_40px_rgba(245,158,11,0.15)]">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                AI BIOMETRIC STANDARD 3.0
             </span>
         </div>
         
-        <h1 className="text-5xl md:text-7xl font-light text-white mb-6 leading-tight font-sans tracking-tight">
-          Descubre tu <br/>
-          <span className="font-medium relative inline-block">
-            <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500">Perfecta Simetría</span>
-            {/* Underline decorative */}
-            <svg className="absolute w-full h-3 -bottom-1 left-0 text-amber-400/20 z-0" viewBox="0 0 100 10" preserveAspectRatio="none">
-                <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="2" fill="none" />
-            </svg>
+        <h1 className="text-6xl md:text-9xl font-light text-slate-100 mb-10 leading-[0.85] tracking-tighter animate-fade-in drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+          Tu Sonrisa <br/>
+          <span className="font-bold italic text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-amber-200 to-amber-700">
+            Reimaginada.
           </span>
         </h1>
         
-        <p className="mt-6 max-w-2xl mx-auto text-lg md:text-xl text-slate-400 font-light leading-relaxed">
-          La tecnología de <strong>SIMETRÍA by Clínica Miró</strong> diseña tu sonrisa ideal basándose en las proporciones áureas de tu rostro. Sin compromisos, en segundos.
+        <p className="max-w-2xl mx-auto text-xl md:text-3xl text-slate-400 font-light leading-relaxed animate-fade-in [animation-delay:200ms] mb-20 px-4">
+          Más que estética, una <span className="text-white font-medium italic underline decoration-amber-500/40 underline-offset-8">ingeniería de simetría facial</span> de Clínica Miró.
         </p>
 
-        {/* Process Steps - Minimalist */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 mb-12 max-w-3xl mx-auto">
-            {[
-                { step: "01", title: "Captura", desc: "Selfie biométrica" },
-                { step: "02", title: "Simetría IA", desc: "Análisis & Diseño" },
-                { step: "03", title: "Revelación", desc: "Tu nueva imagen" }
-            ].map((item, idx) => (
-                <div key={idx} className="flex flex-col items-center group relative">
-                    <div className="text-4xl font-light text-white/10 group-hover:text-amber-500/20 transition-colors duration-500 mb-2 font-serif italic">
-                        {item.step}
-                    </div>
-                    <h3 className="text-white/90 font-medium text-sm uppercase tracking-widest mb-1">{item.title}</h3>
-                    <p className="text-xs text-slate-500 font-light">{item.desc}</p>
-                    {idx !== 2 && <div className="hidden md:block absolute top-8 -right-1/2 w-full h-[1px] bg-white/5"></div>}
-                </div>
-            ))}
-        </div>
-
-        <div className="flex flex-col items-center gap-4">
-          <Button onClick={onStart} className="min-w-[240px] py-5 text-sm tracking-[0.15em] shadow-2xl shadow-amber-500/10 hover:scale-105">
-            INICIAR SIMULACIÓN
+        <div className="flex flex-col md:flex-row items-center justify-center gap-10 w-full max-w-3xl animate-fade-in [animation-delay:400ms]">
+          <Button onClick={onStart} className="w-full md:w-[350px] py-10 text-[14px] shadow-[0_25px_80px_rgba(245,158,11,0.3)] hover:scale-105 transition-transform">
+            DISEÑAR MI SONRISA
           </Button>
           
-          <div className="text-[10px] text-slate-500 max-w-md text-center leading-tight mt-4 uppercase tracking-widest">
-             Al continuar, aceptas los <a href="#" className="underline hover:text-slate-300">Términos de Uso</a>. 
-             La simulación es referencial y no clínica.
-          </div>
+          <button 
+            onClick={onOpenDemo}
+            className="group w-full md:w-[350px] flex items-center justify-center gap-6 px-12 py-9 rounded-full bg-white/5 border border-white/10 text-slate-200 text-[12px] font-black uppercase tracking-[0.5em] hover:bg-white/10 transition-all backdrop-blur-2xl"
+          >
+            <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center group-hover:bg-amber-500 transition-all">
+                <svg className="w-5 h-5 text-amber-500 group-hover:text-black fill-current translate-x-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+            </div>
+            SHOWCASE IA
+          </button>
+        </div>
+
+        <div className="mt-28 md:mt-36 pt-16 border-t border-white/10 flex flex-wrap justify-center items-center gap-12 md:gap-32 opacity-40 grayscale-[50%] contrast-125">
+             <img src="https://mirousa.com/wp-content/uploads/2022/10/logo-miro-vertical.png" className="h-16 object-contain" alt="Miró Clinical Logo" />
+             <div className="text-[12px] text-white font-black tracking-[0.7em] uppercase border-l border-white/20 pl-12 hidden md:block">Certified Clinical Excellence</div>
         </div>
       </div>
     </div>

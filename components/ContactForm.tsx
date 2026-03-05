@@ -9,9 +9,9 @@ interface ContactFormProps {
 }
 
 const InputField: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
-  <div className="relative">
+  <div className="relative group">
     <input
-      className="w-full bg-transparent border-b border-slate-300 px-2 py-4 text-slate-800 placeholder-slate-600 focus:outline-none focus:border-amber-400 transition-colors duration-300 text-lg font-medium"
+      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all duration-300 text-sm font-medium tracking-wide uppercase"
       {...props}
     />
   </div>
@@ -19,8 +19,8 @@ const InputField: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props
 
 const ContactForm: React.FC<ContactFormProps> = ({ 
   onDownload, 
-  title = "Desbloquear Diseño", 
-  subtitle = "Ingresa tus datos para revelar tu simulación", 
+  title = "Recepción de Informe", 
+  subtitle = "Recibe tu análisis profesional Miró Elite", 
   buttonText = "VER MI NUEVA SONRISA"
 }) => {
   const [whatsapp, setWhatsapp] = useState('');
@@ -30,54 +30,55 @@ const ContactForm: React.FC<ContactFormProps> = ({
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate API delay for realism
     setTimeout(() => {
         setIsSubmitting(false);
-        onDownload(); // Trigger parent action
-    }, 1000);
+        onDownload();
+    }, 1500);
   };
 
   return (
-    <div className="w-full max-w-md mx-auto bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden animate-fade-in-up relative z-20">
-      <div className="p-8 bg-slate-50 border-b border-slate-100">
-        <h3 className="text-2xl font-medium text-center text-slate-800 mb-3">{title}</h3>
-        <p className="text-center text-slate-600 text-sm uppercase tracking-wide font-semibold leading-relaxed">{subtitle}</p>
+    <div className="w-full max-w-lg mx-auto bg-[#121418] rounded-[3.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.6)] border border-white/5 overflow-hidden animate-fade-in-up relative z-20">
+      <div className="p-12 md:p-16 border-b border-white/5 bg-[#1a1c22]">
+        <h3 className="text-2xl md:text-3xl font-light text-center text-white mb-4 uppercase tracking-[0.4em] italic leading-tight">{title}</h3>
+        <p className="text-center text-slate-500 text-[11px] uppercase tracking-[0.4em] font-black leading-relaxed">{subtitle}</p>
       </div>
       
-      <form onSubmit={handleSubmit} className="p-8 pt-6 space-y-8 bg-white">
-        <div>
-          <label htmlFor="name" className="sr-only">Nombre</label>
-          <InputField type="text" id="name" name="name" placeholder="NOMBRE COMPLETO" required />
+      <form onSubmit={handleSubmit} className="p-12 md:p-16 space-y-10">
+        <div className="space-y-4">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2">Nombre Completo</label>
+          <InputField type="text" id="name" name="name" placeholder="EJ: JUAN PÉREZ" required />
         </div>
-        <div>
-          <label htmlFor="whatsapp" className="sr-only">WhatsApp</label>
-          <div className="relative flex items-center border-b border-slate-300 transition-colors duration-300 focus-within:border-amber-400">
-             <span className="text-slate-600 pl-2 text-lg font-medium">+56</span>
+        
+        <div className="space-y-4">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2">WhatsApp de Contacto</label>
+          <div className="relative flex items-center group">
+             <span className="absolute left-6 text-amber-500 text-sm font-black tracking-widest">+56</span>
              <input
                 type="tel"
                 id="whatsapp"
                 name="whatsapp"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder=" 9 1234 5678"
-                className="w-full bg-transparent border-none px-2 py-4 text-slate-800 placeholder-slate-600 focus:outline-none focus:ring-0 text-lg font-medium"
+                placeholder="9 1234 5678"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-16 pr-6 py-5 text-white placeholder-slate-700 focus:outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all text-sm font-medium tracking-wide"
                 required
              />
           </div>
         </div>
-        <div className="pt-4">
-          <Button type="submit" disabled={isSubmitting} className="w-full py-4 text-base font-bold shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:shadow-[0_0_30px_rgba(245,158,11,0.4)]">
+
+        <div className="pt-8 space-y-8">
+          <Button type="submit" disabled={isSubmitting} className="w-full py-8 text-[12px] font-black tracking-[0.4em] shadow-2xl shadow-amber-500/20">
             {isSubmitting ? (
-                <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-5 w-5 text-slate-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    PROCESANDO...
+                <span className="flex items-center justify-center gap-4">
+                    <svg className="animate-spin h-5 w-5 text-slate-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    SINCRO_DATA...
                 </span>
             ) : (
                 buttonText
             )}
           </Button>
-          <p className="text-center text-xs text-slate-500 mt-5 leading-tight font-medium">
-            Al continuar, aceptas ser contactado para validar tu diagnóstico.
+          <p className="text-center text-[10px] text-slate-600 leading-relaxed font-black uppercase tracking-[0.3em]">
+            Al continuar, certificas que tus datos son válidos para recibir la documentación oficial de Clínica Miró.
           </p>
         </div>
       </form>

@@ -1,7 +1,8 @@
 {
-  "name": "SIMSONRISApagado1fondonegro",
-  "description": "Una aplicación impulsada por IA que permite a los usuarios subir una foto y recibir una simulación de su sonrisa perfecta.",
   "requestFramePermissions": [
-    "camera"
-  ]
+    "camera",
+    "microphone"
+  ],
+  "name": "SIMSONRISApagado1fondonegro",
+  "description": ""
 }
